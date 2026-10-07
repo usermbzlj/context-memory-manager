@@ -1,6 +1,6 @@
 # Upstream contracts and audit provenance
 
-Reviewed for this revision: 2026-10-02. These are implementation references, not live-host
+Reviewed for this revision: 2026-10-02; host and MCP contracts re-checked 2026-10-07. These are implementation references, not live-host
 certification, benchmark results or a claim that every mentioned integration was retested against
 every current upstream binary. Public documentation can change independently of a tagged release.
 
@@ -38,17 +38,33 @@ usage and outcomes in real long tasks before selecting aggressive settings.
 
 ## Claude, Codex, Kimi and MCP
 
+Re-checked 2026-10-07. Versions named here are what the contracts were read against, not
+installed binaries that were exercised.
+
 https://code.claude.com/docs/en/hooks
 https://code.claude.com/docs/zh-CN/hooks
 https://developers.openai.com/codex/mcp/
 https://learn.chatgpt.com/docs/hooks
-https://moonshotai.github.io/kimi-cli/en/customization/hooks.html
-https://moonshotai.github.io/kimi-cli/en/reference/kimi-command.html
-https://modelcontextprotocol.io/specification/2025-06-18/basic/transports
+https://github.com/MoonshotAI/kimi-code/tree/%40moonshot-ai/kimi-code%402.1.1
+https://modelcontextprotocol.io/specification/2026-07-28/basic/lifecycle
+https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
 
-The reviewed Claude contract allows a shape-preserving `updatedToolOutput`. CMM uses only the
-successful documented Bash envelope when the user explicitly enables ingress projection. This
-is not history editing. Codex/Kimi native adapters remain capture-only by design; this is a CMM
-capability statement, not a claim that every possible upstream hook technique is impossible.
-MCP support is explicitly tools-only stdio at negotiated 2024-11-05/2025-03-26/2025-06-18 versions.
-No assertion of latest full-spec conformance is made.
+The reviewed Claude contract allows a shape-preserving `updatedToolOutput` and an exec-form
+command handler (`command` plus `args`, no shell). CMM uses only the successful documented Bash
+envelope when the user explicitly enables ingress projection. This is not history editing.
+Codex (docs current with `rust-v0.160.1`) and Kimi native adapters remain capture-only by
+design; this is a CMM capability statement, not a claim that every possible upstream hook
+technique is impossible.
+
+Kimi Code 2.1.1 (`packages/agent-core-v2/src/features/externalHooks`) reads `[[hooks]]` only from
+`$KIMI_CODE_HOME/config.toml`, accepts `event`, `matcher`, `command` and `timeout`, runs the
+command through a shell in the session directory, and sends `tool_output` as the first 2,000
+UTF-16 units of text parts. It has no per-launch config flag, which retired the old wrapper.
+
+OpenCode 1.18.35 still exposes `tool.execute.after` and `experimental.chat.messages.transform`.
+
+MCP support is tools-only stdio. Legacy clients negotiate 2024-11-05 through 2025-11-25 with
+`initialize`. The memory server also implements the stateless 2026-07-28 surface it needs:
+`server/discover`, per-request `_meta` protocol version, `resultType`, list cache hints and the
+`-32022` unsupported-version error. The proxy speaks only the legacy handshake upstream.
+No assertion of full-spec conformance is made.

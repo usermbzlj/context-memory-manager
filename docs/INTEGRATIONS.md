@@ -1,7 +1,7 @@
 # Agent integrations and their boundaries
 
-This release was revised on **2026-10-05**. The inherited host adapters retain their documented
-contracts; OpenCode, Claude and the new RTK boundary were reviewed for this revision.
+Contracts were re-checked on **2026-10-07** against OpenCode 1.18.35 plugin source, the current
+Claude Code hooks reference, Codex hooks/MCP docs, Kimi Code 2.1.1 source and MCP 2026-07-28.
 See `UPSTREAM_CONTRACTS.md` for source provenance and live-test limitations.
 An adapter test verifies our interpretation of a contract; it does not certify a live host.
 Use an installed release tarball (`cmm`) or substitute `node /absolute/path/dist/src/cli.js`.
@@ -20,8 +20,8 @@ It retains the Node executable path used by setup. Re-run setup after moving the
 or switching Node installations. The host provides `@opencode-ai/plugin`; CMM does not install
 another copy or edit the OpenCode executable.
 
-`tool.execute.after` observes recognized text outputs. The experimental
-`chat.messages.transform` hook captures missed completed text parts, evaluates pressure and
+`tool.execute.after` observes recognized text outputs. The
+`experimental.chat.messages.transform` hook captures missed completed text parts, evaluates pressure and
 replaces eligible historical `state.output` strings. User messages, assistant prose, tool
 inputs, pending/error states, attachments and transcript files are untouched. Newly observed
 results are shown once before they can be projected. Some MCP paths have a different after-hook
@@ -52,6 +52,10 @@ cmm setup claude --workspace "D:\MyProject"
 
 This merges `.claude/settings.local.json` hooks and the `.mcp.json` server entry.
 `PostToolUse` and `PostToolUseFailure` capture the values that the host delivers.
+Hooks use Claude's **exec form** (`command` is the absolute Node executable, `args` holds the CLI
+path and options), so no Git Bash or PowerShell quoting applies and install paths may contain
+spaces or shell metacharacters. A Claude Code release that predates exec form ignores `args`;
+use a current release. Re-running setup replaces an earlier shell-form CMM hook.
 **Default is capture-only output behavior.** Set `integration.ingressCompression=true`
 explicitly to enable this ingress path, then restart the host. Only a successful `Bash` result with documented `stdout`, `stderr`, `interrupted: false`
 and `isImage: false` fields is eligible for replacement. CMM replaces only `stdout`, retains
@@ -63,7 +67,9 @@ and meaningfully shorter. No hook blocks or approval policy changes are used. St
 is empty on a capture-only or failure path. Standard error may contain a short diagnosis.
 
 **Limits:** this is ingress compression, not arbitrary historical-message editing. Pinning a
-result does not rewrite a request already sent to Claude. `context_recall` retrieves its
+result does not rewrite a request already sent to Claude. On Windows, wherever Claude's
+PowerShell tool is enabled it handles shell commands; those results are captured but never
+replaced, because only the documented Bash envelope is eligible. `context_recall` retrieves its
 captured envelope; the original tool may have been truncated before the hook observed it.
 The hook does not make invisible/pre-truncation output magically recoverable.
 
@@ -91,37 +97,45 @@ outside the documented hook coverage cannot be observed by this adapter.
 For actual compression of calls to a particular external MCP server, configure that server
 through the tools-only proxy below. Native tools remain outside that proxy.
 
-## Kimi: temporary launch configuration, not a global config rewrite
+## Kimi Code 2.x: user-level capture hooks, project MCP
 
 ```powershell
-cmm launch kimi --workspace "D:\MyProject"
-# Preserve your alternate source configuration:
-cmm launch kimi --workspace "D:\MyProject" --config-file "D:\Config\kimi.toml" -- --help
+cmm setup kimi --workspace "D:\MyProject" --dry-run
+cmm setup kimi --workspace "D:\MyProject"
 ```
 
-The wrapper copies the existing config into a private temporary sibling, preserving its
-relative path base, and adds two capture hooks. It adds a temporary memory MCP config and
-retains the default global MCP config when present. It launches your existing `kimi`
-executable with the requested arguments, then removes temporary files on normal exit.
-It never adds YOLO/AFK flags or bypasses tool approval.
+Kimi Code reads hooks only from its user-level `config.toml` in `KIMI_CODE_HOME` (default
+`~/.kimi-code`) and has no per-launch config flag. Setup therefore adds two `[[hooks]]` tables
+(`PostToolUse`, `PostToolUseFailure`) for this workspace to that file, backs up the previous
+file beside it, and writes `.kimi-code/mcp.json` in the project. Each workspace has its own
+tables; uninstall removes only that workspace's tables and MCP entry. CMM identifies its tables
+by the `--managed-by-cmm` command, not by comments, so a Kimi rewrite that drops comments is
+still recognized. Hooks in another form (an inline `hooks = [...]` array) are refused rather
+than rewritten. Run `kimi` once first; setup refuses to create a missing config. `setup all`
+reports Kimi as skipped in that case.
 
-The hooks read `tool_output` on success and `error` on failure. The documented post-hook
-contract does not guarantee a tool-call ID. Missing IDs become unique observation IDs;
-CMM does not pretend that two otherwise identical outputs are the same invocation.
-Native hooks are silent, capture-only. No unsupported output replacement is attempted.
+Because the hooks are user-level, they run in every project. A hook whose working directory
+is outside the configured workspace exits silently without opening the archive. Each
+configured workspace adds one short Node process per tool call; Kimi does not wait for these
+observation-only hooks.
 
-`cmm setup kimi` writes a project MCP definition for inspection/manual use; **that file
-alone does not install native hooks**. `cmm launch kimi` is the supported capture path.
-TOML `[[hooks]]` and JSON hook arrays are supported; ambiguous inline TOML hook arrays
-are refused rather than overwritten. Existing global servers named `context_memory`
-must be renamed/removed before the scoped wrapper can safely add its server.
+Kimi delivers `tool_call_id`, the tool input and `tool_output` on success, and an error object
+on failure. **`tool_output` is at most the first 2,000 UTF-16 units of the text output.** An
+output of that length is recorded as `partial` evidence and is never projected again; a
+dangling surrogate at the cut is dropped so the observed prefix is valid UTF-8. Shorter outputs
+were not cut by the hook. Native hooks are silent, capture-only. No output replacement is
+attempted and no approval mode is changed.
 
-**Limits:** Kimi documents hooks as Beta. A hard kill or power loss can leave a temporary
-`.cmm-launch-*` file beside the original config; it may contain copied credentials.
-Remove stale files only after the associated process has stopped. On Windows, shell paths
-with unsafe command metacharacters are refused; choose an ordinary path. The wrapper does
-not rewrite the agent or resolve an incompatible host version automatically.
+Kimi loads MCP servers from the user `mcp.json`, then the git root `.mcp.json` (shared with
+Claude), then `<cwd>/.kimi-code/mcp.json`; later entries override earlier ones. Start Kimi from
+the workspace root so the Kimi-scoped `context_memory` server applies, and approve workspace
+trust when asked.
 
+**Limits:** `cmm launch kimi` from earlier releases targeted the archived Python `kimi-cli` and
+was removed; Kimi Code 2.x rejects its flags. Setup backups in `KIMI_CODE_HOME` can contain
+provider credentials from your config; keep or delete them as you would the original. Windows
+hook commands with command metacharacters in their paths are refused; choose an ordinary path.
+Validated against Kimi Code 2.1.1 source and a disposable config, not a live Kimi session.
 ## Tools-only MCP proxy
 
 Start a stdio server through CMM instead of connecting to that one server directly:
@@ -144,7 +158,10 @@ annotated text retain their original result structure. Unknown shapes fail open.
 names are reserved; a conflicting upstream name produces an explicit error.
 
 This is **not** a general MCP transport gateway. It implements a deliberately bounded,
-tools-only stdio subset, negotiating `2024-11-05`, `2025-03-26` or `2025-06-18`.
+tools-only stdio subset. Clients negotiate `2024-11-05` through `2025-11-25` with `initialize`;
+the proxy uses the same handshake upstream. The built-in memory server (`cmm mcp`) also answers
+stateless `2026-07-28` requests: `server/discover`, and `tools/list`/`tools/call` carrying the
+protocol version in `_meta`. A proxy does not offer the stateless revision to its clients.
 There is no Streamable HTTP/SSE, resource/prompt passthrough, roots, sampling, elicitation,
 server-initiated capability forwarding or latest-protocol compliance claim. Use the upstream
 directly when those capabilities are required. There are at most eight concurrent inbound
@@ -167,8 +184,9 @@ Schema compatibility is pinned, not a promise about all RTK versions. See `UPSTR
 - Claude hooks / replacement shape: https://code.claude.com/docs/en/hooks
 - Codex hooks and code-mode behavior: https://learn.chatgpt.com/docs/hooks
 - Codex MCP setup: https://developers.openai.com/codex/mcp/
-- Kimi Beta hooks: https://moonshotai.github.io/kimi-cli/en/customization/hooks.html
-- Kimi CLI config flags: https://moonshotai.github.io/kimi-cli/en/reference/kimi-command.html
-- MCP stdio transport: https://modelcontextprotocol.io/specification/2025-06-18/basic/transports
+- Kimi Code hooks: https://github.com/MoonshotAI/kimi-code/blob/%40moonshot-ai/kimi-code%402.1.1/docs/en/customization/hooks.md
+- Kimi Code hook payloads: https://github.com/MoonshotAI/kimi-code/blob/%40moonshot-ai/kimi-code%402.1.1/packages/agent-core-v2/src/features/externalHooks/agent/agentExternalHooksService.ts
+- MCP 2026-07-28 lifecycle: https://modelcontextprotocol.io/specification/2026-07-28/basic/lifecycle
+- MCP stdio transport: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
 
 These references are contracts, not a claim that a particular installed version was tested.

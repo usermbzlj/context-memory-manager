@@ -9,13 +9,13 @@ It preserves captured tool results, makes the middle of long logs searchable, an
 exact evidence on demand. With a compatible host, old results can leave the working context
 without deleting the archive. It is not another collection of command-output filters.
 
-**0.3.0-rc.1 is a release candidate.** Windows source, CLI and offline package checks pass;
+**0.3.0-rc.2 is a release candidate.** Windows source, CLI and offline package checks pass;
 live agent/Bun sessions and task-level cost or quality improvements are not certified.
 No runtime npm dependencies, account, required model key, telemetry service or hosted database.
 
 ## Try it without changing an agent
 
-Requires **Node.js >=22.13** (Windows checks use 24.19.0; the historical Linux run used 22.16.0). Extract the source-with-build ZIP
+Requires **Node.js >=22.13**; Node 24 LTS or newer is recommended (Windows checks use 24.19.0). Extract the source-with-build ZIP
 and run from its project directory:
 
 ```powershell
@@ -29,12 +29,12 @@ projection bytes, middle-of-log search, complete paged recovery and pin restorat
 The provided local npm tarball can alternatively be installed without contacting a registry:
 
 ```powershell
-npm install -g --offline --ignore-scripts .\context-memory-manager-0.3.0-rc.1.tgz
+npm install -g --offline --ignore-scripts .\context-memory-manager-0.3.0-rc.2.tgz
 cmm demo
 ```
 
 The package is supplied locally; these instructions do not imply an npm publication.
-Node may print its experimental SQLite warning to stderr. Protocol stdout remains JSON only.
+On Node 22, Node prints an experimental SQLite warning to stderr. Protocol stdout remains JSON only.
 
 ## Connect one project
 
@@ -54,7 +54,7 @@ storage for search and diagnostics. CLI's default agent is `cli`, not your last-
 | OpenCode | Capture, first-presentation protection, pressure-triggered historical text projection | Experimental host transform API; Node bridge, not native Bun SQLite |
 | Claude Code | Capture + MCP retrieval; original first result unchanged | Explicit opt-in for a shape-preserving, successful Bash stdout ingress projection |
 | Codex | Capture + MCP retrieval | No native CMM history or result rewriting |
-| Kimi Code | Launch wrapper installs temporary capture hooks + MCP retrieval | `setup kimi` alone is not native capture; hooks are Beta |
+| Kimi Code 2.x | Capture through user-level hooks scoped to this workspace + MCP retrieval | Kimi sends at most 2,000 UTF-16 units of output; a result at that limit is archived as partial. No rewriting |
 | External tools-only MCP proxy | Forward once, archive eligible text, preserve original result | Opt-in projection only for declared read-only tools with eligible plain text |
 
 The five tools are `context_search`, `context_recall`, `context_pin`, `context_unpin`, and
@@ -165,7 +165,7 @@ npm test
 npm run test:pack
 ```
 
-The 2026-10-05 Windows run has **179 tests: 177 pass, 0 fail, 2 platform skips**, including original regressions, actual
+The 2026-10-07 Windows run has **182 tests: 181 pass, 0 fail, 1 platform skip**, including original regressions, actual
 v0.1/v0.2 schema fixtures, corruption checks, concurrent writers, independent protocol peers,
 RTK schema fixtures and real CLI subprocesses. The distributable check installs the actual local
 tarball into an isolated directory. The Windows smoke covers paths with spaces, demo, setup,

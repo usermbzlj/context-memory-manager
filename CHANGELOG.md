@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.3.0-rc.2 - 2026-10-07
+
+### Breaking
+
+- `cmm launch kimi` is removed. It targeted the archived Python `kimi-cli`; Kimi Code 2.x has no
+  `--config-file`/`--mcp-config-file` flags. Use `cmm setup kimi`.
+
+### Changed
+
+- Kimi Code 2.x: `setup kimi` adds capture-only `[[hooks]]` tables for the workspace to the user-level
+  `$KIMI_CODE_HOME/config.toml` (default `~/.kimi-code`), with a backup, and writes
+  `.kimi-code/mcp.json`. Uninstall removes only that workspace's tables. A missing Kimi config is
+  refused (`setup all` reports it as skipped). Hooks outside the workspace exit silently.
+- Kimi outputs at the host's 2,000-unit `tool_output` limit are archived as partial and never
+  projected; Kimi's `tool_call_id` is used.
+- Claude hooks use exec form (`command` + `args`), avoiding Git Bash/PowerShell quoting; an earlier
+  shell-form CMM hook is replaced on setup and recognized on uninstall.
+- MCP: the memory server accepts `initialize` through 2025-11-25 and stateless 2026-07-28 requests
+  (`server/discover`, `_meta` protocol version, `resultType`, `-32022`). The proxy keeps the legacy
+  handshake and asks upstream servers for 2025-11-25.
+- With no retention providers configured, the conservative scorer is primary instead of a
+  provider scorer that can only fall back.
+- Fresh databases create `tool_events` with the session-aware unique key directly; an unrecognized
+  legacy definition is refused instead of migrated with a session-blind key.
+- Toolchain: TypeScript 7, `@types/node` 26, explicit `types`/`rootDir`/`lib` in `tsconfig.json`;
+  CI covers Node 22.13, 22, 24 and 26 with current GitHub Actions majors.
+
+Schema remains v4. Live Kimi, Claude, Codex and OpenCode sessions remain unvalidated; see
+`docs/RELEASE_VALIDATION.md`.
+
 ## 0.3.0-rc.1 local hardening - 2026-10-05
 
 ### Fixed

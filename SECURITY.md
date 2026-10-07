@@ -12,8 +12,9 @@ NTFS policy, multi-user isolation or encryption guarantee is implied.
 Diagnostics avoid full transcript logging and redact common credential keys/patterns. This is
 not a universal secret detector. Review diagnostics before sharing them. Git remote metadata
 is local project metadata; a credential-bearing remote should not be used. Generated agent
-configuration includes absolute local paths. Kimi temporary launch configs can contain copied
-API keys and may survive a hard kill; remove stale files after checking the process has stopped.
+configuration includes absolute local paths. `cmm setup kimi` edits the user-level Kimi Code
+`config.toml` and leaves a `.cmm-backup-*` copy beside it; that copy can contain the same provider
+API keys as the original. Stale `.cmm-launch-*` files from earlier releases can also contain keys.
 
 Default operation is offline. If you configure retention/capsule/chain providers, their requests
 can contain tool descriptors, snippets, paths, outcomes and capsule drafts. Those may be private.

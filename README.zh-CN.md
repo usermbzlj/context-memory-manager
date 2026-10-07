@@ -1,6 +1,6 @@
 # Context Memory Manager
 
-当前版本 **0.3.0-rc.1**，发布候选版。这是一个本地工具证据归档与历史上下文管理层，不是另一套 RTK 命令过滤器。
+当前版本 **0.3.0-rc.2**，发布候选版。这是一个本地工具证据归档与历史上下文管理层，不是另一套 RTK 命令过滤器。
 
 默认不需要模型 Key、账号或云服务；先保存实际观察到的结果，保留首次使用，历史压力出现后再生成可找回的精简视图。
 
@@ -8,7 +8,7 @@
 
 ## 先运行离线演示
 
-需要 **Node.js 22.13 或更新版本**。解压带预构建程序的 ZIP，在项目目录打开 PowerShell：
+需要 **Node.js 22.13 或更新版本**，推荐 Node 24 LTS 及以上；Node 22 会在 stderr 打印 SQLite 实验性警告，不影响 JSON 输出。解压带预构建程序的 ZIP，在项目目录打开 PowerShell：
 
 ```powershell
 node .\dist\src\cli.js demo
@@ -33,7 +33,7 @@ node .\dist\src\cli.js setup opencode --workspace "D:\MyProject"
 | OpenCode | 归档、首次保留、压力触发历史投影 | 使用实验性接口 |
 | Claude Code | 归档与 MCP 找回 | 入口 Bash 压缩需显式开启 |
 | Codex | 原生归档与 MCP 找回 | 不声称原生历史改写 |
-| Kimi Code | launch 包装器加入临时 Hook | setup kimi 单独不会归档原生工具 |
+| Kimi Code 2.x | 用户级 Hook 按工作区归档，MCP 找回 | Kimi 只传前 2,000 个 UTF-16 单元，达到上限的结果标为 partial；不改写 |
 | MCP 代理 | 转发一次、归档、保留输出 | 压缩需显式开启且工具声明只读 |
 
 仅安装记忆 MCP 服务器不等于自动观察原生工具。搜索和诊断时必须使用相同 agent、workspace 和 storage。
@@ -52,6 +52,6 @@ node .\dist\src\cli.js setup opencode --workspace "D:\MyProject"
 
 升级前停止 Agent，备份整个存储目录，包括数据库侧文件和 blobs。本版迁移到 schema v4，旧可执行程序不能再写入。使用 `verify` 校验、`reindex` 重建旧数据索引。旧投影标记不会被自动当成可信凭据。
 
-2026-10-05 的 Windows 全套结果为 **179 项：177 通过、0 失败、2 项平台跳过**，包含原版回归、真实旧结构迁移、字节损坏和实际 CLI 子进程。离线安装包和 `scripts/windows-smoke.ps1` 均通过。**四个真实 Agent、OpenCode/Bun、RTK 实际二进制和真实任务质量/账单对照仍未验收。** Windows Kimi 的 console Ctrl-C 与 `.cmd` 子进程树也需真实宿主验证。
+2026-10-07 的 Windows 全套结果为 **182 项：181 通过、0 失败、1 项平台跳过**，包含原版回归、真实旧结构迁移、字节损坏和实际 CLI 子进程。离线安装包和 `scripts/windows-smoke.ps1` 均通过。**四个真实 Agent、OpenCode/Bun、RTK 实际二进制、远程 CI 和真实任务质量/账单对照仍未验收。**
 
 归档是本地明文，可能含源码和密钥，不要提交到 GitHub。默认不自动删除原文。演示的 **95.51%** 只是合成日志的字符缩减，不是任务费用或质量证明。

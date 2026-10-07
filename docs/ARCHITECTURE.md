@@ -1,6 +1,6 @@
 # Architecture: evidence-first history management
 
-Version 0.3.0-rc.1 / schema v4 / revised 2026-10-05.
+Version 0.3.0-rc.2 / schema v4 / revised 2026-10-07.
 
 ## Separation of responsibility
 
@@ -129,7 +129,9 @@ pinned source and schema fixtures, not a running RTK executable or a live agent 
 ## Protocol and operating bounds
 
 JSONL stdio: 32 MiB frames, at most eight concurrent inbound requests; no public listener.
-Memory MCP supports five tools. The tools-only proxy has no resources/prompts/sampling/HTTP
+Memory MCP supports five tools, legacy `initialize` (2024-11-05 through 2025-11-25) and stateless
+2026-07-28 requests with `server/discover`. The tools-only proxy negotiates the legacy handshake
+upstream and has no resources/prompts/sampling/HTTP
 passthrough, never retries uncertain upstream execution, and projects only explicitly opted-in,
 read-only-declared, eligible text results. An annotation is not a permission bypass.
 

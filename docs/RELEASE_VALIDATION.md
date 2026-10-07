@@ -1,8 +1,35 @@
-# Release validation: 0.3.0-rc.1
+# Release validation: 0.3.0-rc.2
 
-Latest record: **2026-10-05, Windows hardening**. Local release candidate; no npm/GitHub publication
-or live-agent certification. The **2026-10-02 Linux record** below and earlier v0.2 reports remain
-historical evidence for their exact snapshots, not current cross-platform certification.
+Latest record: **2026-10-07, Windows, 0.3.0-rc.2**. Local release candidate; no npm/GitHub
+publication or live-agent certification. The 2026-10-05 rc.1 record, the **2026-10-02 Linux
+record** below and earlier v0.2 reports remain historical evidence for their exact snapshots.
+
+## Windows host-contract update: 2026-10-07
+
+Environment: Windows 11, version **10.0.26300**, x64; Node **24.19.0**; TypeScript **7.0.2**.
+No user archive, credential, paid model or live agent session was used. Every test and smoke
+run points `KIMI_CODE_HOME` at a disposable directory; the real `~/.kimi-code/config.toml` had the
+same SHA-256 and modification time before and after, with no CMM backup beside it.
+
+| Executed check | Actual result |
+| --- | --- |
+| Clean build + full suite | `npm test`: **182 tests, 18 suites; 181 pass, 0 fail, 1 skipped**, exit 0 |
+| Offline distributable | `npm run test:pack`: `context-memory-manager-0.3.0-rc.2.tgz` (165 files) installed offline; help/version, demo, four-agent setup/dry-run/uninstall with byte-exact Kimi config restore, legacy MCP handshake and `server/discover` pass |
+| Windows CLI smoke | `scripts/windows-smoke.ps1`: isolated storage and Kimi home, paths with spaces, demo, setup/uninstall and verify pass; `liveAgentTested: false` |
+| Kimi Code 2.x setup | Two workspaces in one user config, idempotent re-run, in-place replacement, comment-stripped and literal-string tables recognized, inline `hooks = [...]` refused, missing config refused, byte-exact uninstall |
+| Kimi hook payload | 2,000-unit `tool_output` recorded as partial with a dangling surrogate dropped; `tool_call_id` used; hook outside the workspace exits silently |
+| Claude exec form | `command`/`args` handler with argv passed verbatim; legacy shell-form CMM hook replaced; unrelated user hook kept on uninstall |
+| MCP dual era | Legacy `initialize` through 2025-11-25 with readiness gate; stateless `server/discover`, `tools/list`, `tools/call` and `-32022` for an unsupported version |
+
+The skip is the **file symlink** case, which may require Windows developer mode. The rc.1 POSIX
+signal-wrapper skip no longer applies because the Kimi launch wrapper was removed.
+
+Logs: `docs/validation/windows-2026-10-07-npm-test.txt`, `windows-2026-10-07-package.txt` and
+`windows-2026-10-07-smoke.txt`.
+
+Still unverified: live Kimi Code 2.x (hook delivery, workspace trust prompt and `.kimi-code/mcp.json`
+loading), Claude exec-form hooks in a live host, live Codex and OpenCode/Bun, RTK binaries, a
+remote CI run of the Node 22.13/22/24/26 matrix, and real task-quality/token/cost comparisons.
 
 ## Windows hardening: 2026-10-05
 
