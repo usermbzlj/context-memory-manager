@@ -50,7 +50,25 @@ test('actual CLI stdio MCP is interoperable with an independent client and emits
 test('MCP negotiates a supported version instead of pretending to implement unknown future versions',async t=>{
   const {manager,dir}=await makeManager();t.after(()=>cleanup(dir,manager));
   const peer=new RawPeer(process.execPath,[cli,'serve','--storage',dir,'--workspace',dir]);registerCleanup(manager,()=>peer.close());
-  assert.equal((await peer.init('2099-12-31')).result.protocolVersion,'2025-06-18');
+  assert.equal((await peer.init('2099-12-31')).result.protocolVersion,'2025-11-25');
+});
+test('dual-era MCP serves stateless 2026-07-28 requests without a handshake and keeps legacy gating',async t=>{
+  const {manager,dir}=await makeManager();t.after(()=>cleanup(dir,manager));const service=new MemoryService(manager,{agent:'kimi',workspaceId:dir});
+  const saved=await service.capture({sessionId:'s',toolName:'Read',input:'x.txt',result:'stateless unique evidence'});
+  const peer=new RawPeer(process.execPath,[cli,'serve','--storage',dir,'--workspace',dir,'--agent','kimi']);registerCleanup(manager,()=>peer.close());
+  const meta=(version='2026-07-28')=>({_meta:{'io.modelcontextprotocol/protocolVersion':version,'io.modelcontextprotocol/clientCapabilities':{}}});
+  const discovered=(await peer.request('server/discover',meta())).result;
+  assert.equal(discovered.supportedVersions[0],'2026-07-28');assert.ok(discovered.supportedVersions.includes('2025-11-25'));
+  assert.equal(discovered.resultType,'complete');assert.deepEqual(discovered.capabilities,{tools:{}});assert.equal(discovered.cacheScope,'private');
+  const listing=(await peer.request('tools/list',meta())).result;assert.equal(listing.tools.length,5);assert.equal(typeof listing.ttlMs,'number');
+  assert.equal(listing._meta['io.modelcontextprotocol/serverInfo'].name,'context-memory-manager');
+  const found=(await peer.request('tools/call',{...meta(),name:'context_search',arguments:{query:'stateless'}})).result;
+  assert.equal(found.resultType,'complete');assert.equal(JSON.parse(found.content[0].text).results[0].eventId,saved.eventId);
+  const unsupported=(await peer.request('tools/list',meta('2099-01-01'))).error;
+  assert.equal(unsupported.code,-32022);assert.equal(unsupported.data.requested,'2099-01-01');assert.ok(unsupported.data.supported.includes('2026-07-28'));
+  assert.equal((await peer.request('tools/list')).error.code,-32002,'legacy traffic still requires initialize');
+  assert.equal((await peer.init('2025-11-25')).result.protocolVersion,'2025-11-25');
+  assert.equal((await peer.request('tools/list')).result.tools.length,5);
 });
 test('MCP gateway executes each tool once, shrinks eligible text and preserves every structured/error shape',async t=>{
   const {manager,dir}=await makeManager({integration:{ingressCompression:true}});t.after(()=>cleanup(dir,manager));const countFile=path.join(dir,'count');

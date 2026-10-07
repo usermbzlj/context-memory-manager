@@ -60,6 +60,8 @@ try {
     if(interrupted)throw new Error('Pack smoke interrupted');
     const init=await request('initialize',{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'package-smoke',version:'1'}});assert.equal(init.result.protocolVersion,'2025-06-18');
     child.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');const tools=await request('tools/list');assert.equal(tools.result.tools.length,5);
+    const discover=await request('server/discover',{_meta:{'io.modelcontextprotocol/protocolVersion':'2026-07-28','io.modelcontextprotocol/clientCapabilities':{}}});
+    assert.ok(discover.result.supportedVersions.includes('2026-07-28'));
   }finally{
     try{await lifecycle.shutdown();}
     catch(error){cleanupSafe=false;console.error('Packaged MCP close could not be confirmed; temporary directory retained: '+tmp);throw error;}

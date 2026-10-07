@@ -3,7 +3,9 @@ import { errorMessage } from '../util/validation.js';
 
 export type RpcId = string | number;
 export class RpcError extends Error {
-  constructor(readonly code: number, message: string) {super(message);}
+  readonly code: number;
+  readonly data: unknown;
+  constructor(code: number, message: string, data?: unknown) {super(message);this.code=code;this.data=data;}
 }
 export type RpcHandler = (method:string, params:unknown, signal:AbortSignal) => Promise<unknown> | unknown;
 
@@ -52,7 +54,8 @@ export async function runJsonlServer(options: {
   maxInflight?:number;
 }):Promise<void> {
   const pending=new Map<RpcId,{controller:AbortController;job:Promise<void>}>();
-  const sendError=(id:RpcId|null,code:number,message:string) => writeJson(options.output,{jsonrpc:'2.0',id,error:{code,message:message.slice(0,1000)}});
+  const sendError=(id:RpcId|null,code:number,message:string,data?:unknown) =>
+    writeJson(options.output,{jsonrpc:'2.0',id,error:{code,message:message.slice(0,1000),...(data===undefined ? {} : {data})}});
   const deliver=async(line:string) => {
     let raw:unknown;
     try {raw=JSON.parse(line);} catch {await sendError(null,-32700,'Parse error');return;}
@@ -80,7 +83,7 @@ export async function runJsonlServer(options: {
         if (controller.signal.aborted) throw new RpcError(-32800,'Request cancelled; completed side effects are not rolled back');
         await writeJson(options.output,{jsonrpc:'2.0',id,result:result ?? {}});
       } catch (error) {
-        await sendError(id,error instanceof RpcError ? error.code : -32603,errorMessage(error)).catch(() => {});
+        await sendError(id,error instanceof RpcError ? error.code : -32603,errorMessage(error),error instanceof RpcError ? error.data : undefined).catch(() => {});
       } finally {pending.delete(id);}
     });
     pending.set(id,{controller,job});

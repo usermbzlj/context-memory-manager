@@ -8,7 +8,8 @@ import { errorMessage, object, terminalSafe } from './util/validation.js';
 import { planSetup, planUninstall, applySetup, MissingHostConfig, type AgentTarget, type FileChange } from './integrations/setup.js';
 import type { ContextManager as Manager } from './core/context-manager.js';
 
-export const VERSION='0.3.0-rc.1';
+import { VERSION } from './version.js';
+export { VERSION };
 const HELP=`Context Memory Manager ${VERSION}
 Keep the evidence. Shrink the context. Recall the original.
 

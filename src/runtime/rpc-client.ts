@@ -3,6 +3,8 @@ import { spawnCommand } from '../util/spawn.js';
 import { jsonLines, RpcError, writeJson, type RpcId } from './jsonl.js';
 import { errorMessage } from '../util/validation.js';
 import { observeChild } from '../util/child-lifecycle.js';
+import { LEGACY_PROTOCOLS } from '../mcp/protocol.js';
+import { VERSION } from '../version.js';
 
 /** Private bridge / tools-only upstream client. Never retries a tool call. */
 export class RpcClient {
@@ -80,9 +82,9 @@ export class RpcClient {
   }
   async initialize() {
     const result=await this.request<{protocolVersion:string;capabilities:Record<string,unknown>}>('initialize',{
-      protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'context-memory-manager',version:'0.3.0-rc.1'},
+      protocolVersion:LEGACY_PROTOCOLS.at(-1),capabilities:{},clientInfo:{name:'context-memory-manager',version:VERSION},
     });
-    if(!['2024-11-05','2025-03-26','2025-06-18'].includes(result.protocolVersion)) {
+    if(!LEGACY_PROTOCOLS.includes(result.protocolVersion)) {
       await this.close();throw new Error(`Upstream negotiated unsupported protocol ${result.protocolVersion}`);
     }
     await this.notify('notifications/initialized');
