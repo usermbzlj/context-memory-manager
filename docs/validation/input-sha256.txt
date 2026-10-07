@@ -1,0 +1,2 @@
+e21cec6e9b31da222d2c547a3d59762e19ec0d811b7ee10deebc2ecc15e45476  context-memory-manager-v0.2.0-rc.1-source-with-build.zip
+497ba469682c6d6bcf55a9755873c8750ab714e2ffbbdab27d345a16e3afd369  context-memory-manager-v0.1.0-frozen-2026-09-21.zip

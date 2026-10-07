@@ -1,0 +1,50 @@
+✔ simultaneous initial config publishers have exactly one complete winner (158.6732ms)
+✔ three independent Node writers serialize SQLite and deduplicate blobs without losing any call (1428.4731ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1697.0014
+✔ simultaneous initial config publishers have exactly one complete winner (173.8994ms)
+✔ three independent Node writers serialize SQLite and deduplicate blobs without losing any call (1481.3388ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1759.2489
+✔ simultaneous initial config publishers have exactly one complete winner (144.3782ms)
+✔ three independent Node writers serialize SQLite and deduplicate blobs without losing any call (1457.241ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1718.3923
+✔ simultaneous initial config publishers have exactly one complete winner (172.1223ms)
+✔ three independent Node writers serialize SQLite and deduplicate blobs without losing any call (1427.0447ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1706.0209
+✔ simultaneous initial config publishers have exactly one complete winner (159.3206ms)
+✔ three independent Node writers serialize SQLite and deduplicate blobs without losing any call (1416.1664ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1687.9175

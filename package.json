@@ -1,0 +1,66 @@
+{
+  "bin": {
+    "cmm": "dist/src/cli.js"
+  },
+  "description": "Local-first, recoverable tool-context memory for coding agents. Archive, project, search and recall.",
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "license": "MIT",
+  "main": "dist/src/index.js",
+  "name": "context-memory-manager",
+  "scripts": {
+    "build": "node scripts/clean.mjs && tsc",
+    "clean": "node scripts/clean.mjs",
+    "cli": "node dist/src/cli.js",
+    "demo": "node dist/src/cli.js demo",
+    "test": "npm run build && node --test \"dist/tests/*.test.js\"",
+    "test:pack": "node scripts/pack-smoke.mjs",
+    "check": "npm test && npm run test:pack",
+    "prepack": "npm run build"
+  },
+  "type": "module",
+  "version": "0.3.0-rc.1",
+  "types": "./dist/src/index.d.ts",
+  "keywords": [
+    "coding-agent",
+    "context",
+    "memory",
+    "mcp",
+    "opencode",
+    "claude-code",
+    "codex",
+    "kimi"
+  ],
+  "files": [
+    "dist/src",
+    "README.md",
+    "README.zh-CN.md",
+    "docs/INTEGRATIONS.md",
+    "docs/OPERATIONS.md",
+    "docs/ARCHITECTURE.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "docs/RELEASE_VALIDATION.md",
+    "docs/AUDIT.md",
+    "docs/PROJECT_REVIEW.zh-CN.md",
+    "docs/IMPLEMENTATION_REPORT.zh-CN.md",
+    "CONTRIBUTING.md",
+    "docs/UPSTREAM_CONTRACTS.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./opencode": {
+      "types": "./dist/src/integrations/opencode.d.ts",
+      "import": "./dist/src/integrations/opencode.js"
+    }
+  }
+}

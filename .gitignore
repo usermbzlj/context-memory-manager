@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.tgz
+.cmm/
+*.db*
+.env*
+!.env.example
+*.cmm-backup-*
+.cmm-launch-*
+*.cmm-launch-*

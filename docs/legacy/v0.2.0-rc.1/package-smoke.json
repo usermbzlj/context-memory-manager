@@ -1,0 +1,24 @@
+{
+  "package": "context-memory-manager-0.2.0-rc.1.tgz",
+  "files": 133,
+  "packedBytes": 242874,
+  "unpackedBytes": 885062,
+  "isolatedInstall": true,
+  "registryRequired": false,
+  "help": true,
+  "demo": true,
+  "setupAndUninstall": true,
+  "mcpHandshake": true,
+  "demoProof": {
+    "demo": "Capture -> project -> search -> exact paged recall",
+    "networkCalls": 0,
+    "originalChars": 177046,
+    "projectedChars": 7950,
+    "visibleCharacterReductionPercent": 95.51,
+    "recallPages": 15,
+    "sha256": "585dece61a458985cb90df2b1cc34b9ed9f4eed5ec67ab88cbfbb74c7cd9ff96",
+    "exactRecallVerified": true,
+    "note": "Synthetic demo character counts, not measured API-token savings or a task-quality benchmark.",
+    "excerpt": "[CMM archive 6edf34c9-2287-487d-b074-565f7d5427a7] Read | ok\nEvidence extract, NOT the full result. Original: 177046 UTF-16 chars.\nRetrieve exact captured data: context_recall({\"eventId\":\"6edf34c9-2287-487d-b074-565f7d5427a7\",\"offset\":0,\"limit\":12000}).\nRead artifacts/test.log \u2192 success\nexit code: 0\ntests: 3000 passed, 0 failed\nSUMMARY: 3000 passed; 0 failed. Exit code: 0.\npath: artifacts/test.log\n--- verbatim head ---\nPASS case-0000: cache, retry and archive evidence verified\nPASS case-0001: cache, retry and archive evidence verified\nPASS case-0002: cache, retry and archive evidence verified\nPASS case-0003: cache, retry and archive evidence verified\nPASS case-0004: cache, retry and archive evidence verified\nPASS case-0005: cache, retry and archive evidence verified\nPASS case-0006: cache, "
+  }
+}
