@@ -169,7 +169,9 @@ The 2026-10-07 Windows run has **182 tests: 181 pass, 0 fail, 1 platform skip**,
 v0.1/v0.2 schema fixtures, corruption checks, concurrent writers, independent protocol peers,
 RTK schema fixtures and real CLI subprocesses. The distributable check installs the actual local
 tarball into an isolated directory. The Windows smoke covers paths with spaces, demo, setup,
-uninstall and verify. CI for Windows/Linux/macOS is configured, not claimed green.
+uninstall and verify. The installed Kimi Code 2.1.1 binary was also run with an isolated home and
+a scripted local model: hooks archive its tools, MCP recall works, uninstall restores the config.
+CI for Windows/Linux/macOS is configured, not claimed green.
 
 The demo's 95.51% character reduction is one synthetic example, **not** a measured API-token,
 billing, cache-hit or task-quality improvement. Read [the full validation boundary](docs/RELEASE_VALIDATION.md).

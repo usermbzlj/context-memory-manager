@@ -1,0 +1,40 @@
+Kimi Code live host smoke, 2026-10-07, Windows 10.0.26300, Node 24.19.0, kimi 2.1.1 (C:\Users\root\.kimi-code\bin\kimi.exe)
+Isolation: KIMI_CODE_HOME=<temp>\kimi home, KIMI_DISABLE_TELEMETRY=1, KIMI_CODE_NO_AUTO_UPDATE=1; model = local scripted OpenAI-compatible fixture on 127.0.0.1 (no credentials, no paid calls).
+Paths contain spaces: <temp>\work space, <temp>\storage.
+
+== 1. Untrusted workspace (kimi -p, stream-json) ==
+Warning: this folder is not trusted; skipped 1 project-level MCP server: context_memory (stdio: C:\Program Files\nodejs\node.exe D:\Users\root\Desktop\context-memory-manager-v0.3.0-rc.1\dist\src\cli.js serve --agent kimi --workspace <temp>\work space --storage <temp>\storage --managed-by-cmm).
+  Run `kimi` here and choose "Trust this folder" to enable them.
+Model-visible tools: no mcp__context_memory__* entries.
+
+== 2. After trusting via local kimi web API (POST /api/v1/workspaces/{id}/trust) ==
+Model-visible CMM tools: mcp__context_memory__context_pin,mcp__context_memory__context_recall,mcp__context_memory__context_search,mcp__context_memory__context_status,mcp__context_memory__context_unpin
+
+== 3. Scripted tool session: Read notes.txt; Bash 4500 chars; Bash exit 3; Read big.txt (7332 bytes); mcp context_search ==
+Read call_fixture_1
+Bash call_fixture_2
+Bash call_fixture_3
+Read call_fixture_4
+mcp__context_memory__context_search call_fixture_5
+In-session context_search("fixture") returned: call_fixture_1 only (post-tool hooks are not awaited by Kimi; later captures were still in flight).
+
+== 4. Archive after the session (read-only sqlite) ==
+{"agent":"kimi","session_id":"cmm:dcc852ab4080f0ae4babae263d129b0d790c1240a4d82b3e55f7e95ee9c78ac0","tool_call_id":"call_fixture_1","tool_name":"Read","status":"ok","result_bytes":24,"created_at":1791350688962}
+{"agent":"kimi","session_id":"cmm:dcc852ab4080f0ae4babae263d129b0d790c1240a4d82b3e55f7e95ee9c78ac0","tool_call_id":"call_fixture_2","tool_name":"Bash","status":"ok","result_bytes":2000,"created_at":1791350689096}
+{"agent":"kimi","session_id":"cmm:dcc852ab4080f0ae4babae263d129b0d790c1240a4d82b3e55f7e95ee9c78ac0","tool_call_id":"call_fixture_4","tool_name":"Read","status":"ok","result_bytes":2000,"created_at":1791350689222}
+{"agent":"kimi","session_id":"cmm:dcc852ab4080f0ae4babae263d129b0d790c1240a4d82b3e55f7e95ee9c78ac0","tool_call_id":"call_fixture_3","tool_name":"Bash","status":"error","result_bytes":97,"created_at":1791350689238}
+
+== 5. cmm search after the session ==
+fixture: call_fixture_4 Read status=ok completeness=partial bytes=2000
+fixture: call_fixture_1 Read status=ok completeness=unknown bytes=24
+repeat: call_fixture_2 Bash status=ok completeness=partial bytes=2000
+failing: call_fixture_3 Bash status=error completeness=unknown bytes=97
+
+== 6. cmm verify ==
+{"checked":4,"failed":0,"databaseIntegrityOk":true}
+
+== 7. cmm uninstall kimi ==
+config.toml after uninstall == pre-setup backup (SHA-256): True; .kimi-code/mcp.json left as {"mcpServers": {}}
+
+Kimi MCP SDK constant in binary: LATEST_PROTOCOL_VERSION = "2025-11-25" (accepted by cmm serve).
+Not covered: a real model choosing tools, interactive TUI trust prompt, Kimi Desktop/ACP, Windows console Ctrl-C.

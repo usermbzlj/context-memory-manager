@@ -117,7 +117,8 @@ reports Kimi as skipped in that case.
 Because the hooks are user-level, they run in every project. A hook whose working directory
 is outside the configured workspace exits silently without opening the archive. Each
 configured workspace adds one short Node process per tool call; Kimi does not wait for these
-observation-only hooks.
+observation-only hooks, so a `context_search` issued immediately after a tool call can miss
+that call until its capture finishes. A non-zero `Bash` exit arrives as `PostToolUseFailure`.
 
 Kimi delivers `tool_call_id`, the tool input and `tool_output` on success, and an error object
 on failure. **`tool_output` is at most the first 2,000 UTF-16 units of the text output.** An
@@ -135,7 +136,8 @@ trust when asked.
 was removed; Kimi Code 2.x rejects its flags. Setup backups in `KIMI_CODE_HOME` can contain
 provider credentials from your config; keep or delete them as you would the original. Windows
 hook commands with command metacharacters in their paths are refused; choose an ordinary path.
-Validated against Kimi Code 2.1.1 source and a disposable config, not a live Kimi session.
+The installed Kimi Code 2.1.1 binary was exercised with an isolated home and a scripted local
+model (see `RELEASE_VALIDATION.md`); a real model session and the interactive trust prompt were not.
 ## Tools-only MCP proxy
 
 Start a stdio server through CMM instead of connecting to that one server directly:

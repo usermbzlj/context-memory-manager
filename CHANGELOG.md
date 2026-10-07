@@ -27,7 +27,8 @@
 - Toolchain: TypeScript 7, `@types/node` 26, explicit `types`/`rootDir`/`lib` in `tsconfig.json`;
   CI covers Node 22.13, 22, 24 and 26 with current GitHub Actions majors.
 
-Schema remains v4. Live Kimi, Claude, Codex and OpenCode sessions remain unvalidated; see
+Schema remains v4. The installed Kimi Code 2.1.1 host was exercised with a scripted local model;
+real-model Kimi, Claude, Codex and OpenCode sessions remain unvalidated. See
 `docs/RELEASE_VALIDATION.md`.
 
 ## 0.3.0-rc.1 local hardening - 2026-10-05

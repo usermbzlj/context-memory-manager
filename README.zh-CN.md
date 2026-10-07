@@ -52,6 +52,6 @@ node .\dist\src\cli.js setup opencode --workspace "D:\MyProject"
 
 升级前停止 Agent，备份整个存储目录，包括数据库侧文件和 blobs。本版迁移到 schema v4，旧可执行程序不能再写入。使用 `verify` 校验、`reindex` 重建旧数据索引。旧投影标记不会被自动当成可信凭据。
 
-2026-10-07 的 Windows 全套结果为 **182 项：181 通过、0 失败、1 项平台跳过**，包含原版回归、真实旧结构迁移、字节损坏和实际 CLI 子进程。离线安装包和 `scripts/windows-smoke.ps1` 均通过。**四个真实 Agent、OpenCode/Bun、RTK 实际二进制、远程 CI 和真实任务质量/账单对照仍未验收。**
+2026-10-07 的 Windows 全套结果为 **182 项：181 通过、0 失败、1 项平台跳过**，包含原版回归、真实旧结构迁移、字节损坏和实际 CLI 子进程。离线安装包和 `scripts/windows-smoke.ps1` 均通过。已安装的 Kimi Code 2.1.1 在隔离目录中配合本地脚本化模型实测通过（Hook 归档、2,000 字符截断标 partial、MCP 找回、卸载还原）。**真实模型下的 Kimi、Claude、Codex、OpenCode/Bun、RTK 实际二进制、远程 CI 和真实任务质量/账单对照仍未验收。**
 
 归档是本地明文，可能含源码和密钥，不要提交到 GitHub。默认不自动删除原文。演示的 **95.51%** 只是合成日志的字符缩减，不是任务费用或质量证明。

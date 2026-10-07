@@ -24,12 +24,30 @@ same SHA-256 and modification time before and after, with no CMM backup beside i
 The skip is the **file symlink** case, which may require Windows developer mode. The rc.1 POSIX
 signal-wrapper skip no longer applies because the Kimi launch wrapper was removed.
 
+### Installed Kimi Code 2.1.1 host
+
+The real `kimi.exe` 2.1.1 ran `kimi -p` against an isolated `KIMI_CODE_HOME` (telemetry and
+auto-update disabled) whose only model is a scripted OpenAI-compatible fixture on 127.0.0.1.
+Kimi executed the tools itself; only the model's choices were scripted. No credential or paid
+model was used. Workspace and storage paths contained spaces.
+
+| Observed | Result |
+| --- | --- |
+| Untrusted workspace | Kimi warns and skips the project `context_memory` server from `.kimi-code/mcp.json` |
+| Trusted workspace | Model receives `mcp__context_memory__context_{pin,recall,search,status,unpin}` |
+| Hook delivery | All four native calls archived with Kimi's `tool_call_id`s in one CMM session; a 4,500-char `Bash` output and a 7,332-byte `Read` each arrive as exactly 2,000 bytes and are `partial`; a short `Read` is `unknown`; `exit 3` is archived as `error` via `PostToolUseFailure` |
+| In-session MCP | `context_search` from the model returns archived evidence; a capture still in flight was not yet visible (hooks are not awaited) |
+| Integrity and removal | `cmm verify`: 4 checked, 0 failed; `cmm uninstall kimi` restores `config.toml` byte-for-byte |
+
+Trust was granted through Kimi's local `kimi web` API rather than the interactive TUI prompt.
+Log: `docs/validation/windows-2026-10-07-kimi-live.txt`.
+
 Logs: `docs/validation/windows-2026-10-07-npm-test.txt`, `windows-2026-10-07-package.txt` and
 `windows-2026-10-07-smoke.txt`.
 
-Still unverified: live Kimi Code 2.x (hook delivery, workspace trust prompt and `.kimi-code/mcp.json`
-loading), Claude exec-form hooks in a live host, live Codex and OpenCode/Bun, RTK binaries, a
-remote CI run of the Node 22.13/22/24/26 matrix, and real task-quality/token/cost comparisons.
+Still unverified: Kimi with a real model and the interactive trust prompt, Claude exec-form hooks
+in a live host, live Codex and OpenCode/Bun, RTK binaries, a remote CI run of the Node
+22.13/22/24/26 matrix, and real task-quality/token/cost comparisons.
 
 ## Windows hardening: 2026-10-05
 
