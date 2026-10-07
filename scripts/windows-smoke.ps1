@@ -8,6 +8,14 @@ $root = Join-Path ([IO.Path]::GetTempPath()) ('CMM smoke ' + [Guid]::NewGuid().T
 $workspace = Join-Path $root 'project with spaces'
 $storage = Join-Path $root 'isolated archive'
 [void](New-Item -ItemType Directory -Path $workspace -Force)
+# Kimi Code hooks are user-level. Point Kimi setup at a disposable home, never the real one.
+$kimiHome = Join-Path $root 'kimi home'
+$kimiConfig = Join-Path $kimiHome 'config.toml'
+$kimiBefore = "default_model = `"fixture`"`n"
+[void](New-Item -ItemType Directory -Path $kimiHome -Force)
+[IO.File]::WriteAllText($kimiConfig, $kimiBefore)
+$previousKimiHome = $env:KIMI_CODE_HOME
+$env:KIMI_CODE_HOME = $kimiHome
 function Invoke-Cmm {
     param([string[]]$Arguments)
     $captured = & $Node $cli @Arguments
@@ -23,10 +31,13 @@ try {
     if (-not $preview.dryRun) { throw 'Setup preview did not report dry-run.' }
     if (Test-Path -LiteralPath $storage) { throw 'Preview unexpectedly created storage.' }
     [void](Invoke-Cmm -Arguments @('setup','all','--workspace',$workspace,'--storage',$storage))
+    if (-not ([IO.File]::ReadAllText($kimiConfig)).Contains('PostToolUseFailure')) { throw 'Kimi hooks were not installed in the disposable home.' }
     [void](Invoke-Cmm -Arguments @('uninstall','all','--workspace',$workspace,'--storage',$storage))
+    if ([IO.File]::ReadAllText($kimiConfig) -ne $kimiBefore) { throw 'Kimi uninstall did not restore the disposable config exactly.' }
     [void](Invoke-Cmm -Arguments @('verify','--agent','opencode','--workspace',$workspace,'--storage',$storage))
     [ordered]@{ cli = $cli; node = (& $Node --version); isolatedCLI = $true; pathsWithSpaces = $true; demo = $demo; setupAndUninstall = $true; liveAgentTested = $false } | ConvertTo-Json -Depth 8
 } finally {
+    $env:KIMI_CODE_HOME = $previousKimiHome
     # Only the generated, disposable directory is removed. No personal configuration is touched.
     if (Test-Path -LiteralPath $root) {
         $resolvedRoot = [IO.Path]::GetFullPath($root)

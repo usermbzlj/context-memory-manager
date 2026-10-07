@@ -5,9 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { loadConfig, saveConfig, defaultStoragePath, redactConfig } from './config.js';
 import { errorMessage, object, terminalSafe } from './util/validation.js';
-import { planSetup, planUninstall, applySetup, prepareKimiLaunch, type AgentTarget } from './integrations/setup.js';
-import { spawnCommand } from './util/spawn.js';
-import { observeChild } from './util/child-lifecycle.js';
+import { planSetup, planUninstall, applySetup, MissingHostConfig, type AgentTarget, type FileChange } from './integrations/setup.js';
 import type { ContextManager as Manager } from './core/context-manager.js';
 
 export const VERSION='0.3.0-rc.1';
@@ -21,7 +19,6 @@ Start here:
   setup <agent|all> --dry-run   Preview installation paths (no writes)
   setup <agent|all>             Merge project config; back up replaced files
   uninstall <agent|all>         Remove only managed config; keep all archives
-  launch kimi [-- <args>]       Launch Kimi with temporary capture hooks + MCP
   doctor                       Check local runtime, archive and integration health
 
 Memory (scoped by --agent and --workspace):
@@ -63,7 +60,6 @@ Options:
   --out PATH                  Exact UTF-8 export; fails if the file exists
   --used-tokens N              Optional current usage for tidy
   --context-window N           Optional context window for tidy
-  --config-file PATH           Existing Kimi config to copy for launch
   --dry-run --json --help --version
 
 Agent support is intentionally honest:
@@ -76,7 +72,7 @@ const options={
   storage:{type:'string'},workspace:{type:'string'},agent:{type:'string'},session:{type:'string'},
   database:{type:'string'},hash:{type:'string'},find:{type:'string'},cursor:{type:'string'},
   file:{type:'string'},out:{type:'string'},field:{type:'string'},limit:{type:'string'},offset:{type:'string'},
-  'used-tokens':{type:'string'},'context-window':{type:'string'},'config-file':{type:'string'},
+  'used-tokens':{type:'string'},'context-window':{type:'string'},
   json:{type:'boolean'},shared:{type:'boolean'},restore:{type:'boolean'},'dry-run':{type:'boolean'},
   yes:{type:'boolean'},'managed-by-cmm':{type:'boolean'},help:{type:'boolean',short:'h'},version:{type:'boolean',short:'v'},
 } as const;
@@ -119,36 +115,6 @@ function configSet(cfg:ReturnType<typeof loadConfig>,key:string,raw:string) {
   if(['__proto__','constructor','prototype'].includes(last) || !Object.hasOwn(target,last))throw new Error('Unknown config key');
   target[last]=JSON.parse(raw);saveConfig(cfg);
 }
-async function launchKimi(flags:Flags,passthrough:string[],workspace:string,storage:string,cli:string) {
-  if(passthrough.some(v=>/^(--config(?:-file)?)(?:=|$)/.test(v)))throw new Error('Pass your source config using cmm launch kimi --config-file PATH, before --');
-  const prepared=prepareKimiLaunch({workspace,storage,cli,configFile:flags['config-file']});
-  let lifecycle:ReturnType<typeof observeChild>|undefined;
-  let interrupted=false;
-  let rejectStop!:(error:unknown)=>void;
-  const failedStop=new Promise<never>((_resolve,reject)=>{rejectStop=reject;});
-  const stop=()=>{
-    interrupted=true;
-    if(lifecycle)void lifecycle.shutdown().catch(rejectStop);
-  };
-  try {
-    const child=spawnCommand('kimi',[...prepared.args,...passthrough],{cwd:workspace,stdio:'inherit',windowsHide:true});
-    lifecycle=observeChild(child);
-    process.on('SIGINT',stop);process.on('SIGTERM',stop);
-    const result=await Promise.race([lifecycle.closed,failedStop]);
-    if(result.error)throw result.error;
-    process.exitCode=interrupted ? 130 : result.code ?? (result.signal==='SIGINT'?130:1);
-  } finally {
-    try {
-      if(lifecycle)await lifecycle.shutdown();
-      prepared.cleanup();
-    } catch(error) {
-      // An unconfirmed shutdown may still use these files. They can contain a
-      // copied source configuration, so leave them recoverable and name them.
-      process.stderr.write('[cmm] Kimi close could not be confirmed. Temporary config retained: '+prepared.files.map(terminalSafe).join(', ')+'\n');
-      throw error;
-    } finally {process.off('SIGINT',stop);process.off('SIGTERM',stop);}
-  }
-}
 function diagnostics(manager:Manager,scope:{agent:string;workspaceId:string;shared?:boolean},cmd:string,limit:number) {
   if(limit<1 || limit>200)throw new Error('Diagnostic limit must be 1..200');
   const filter=scope.shared?'workspace_id=?':'workspace_id=? AND agent=?';
@@ -172,15 +138,20 @@ export async function main(argv=process.argv.slice(2)):Promise<void> {
   if(major<22 || major===22 && minor<13)throw new Error('Node.js >=22.13 is required. OpenCode runs this core in a Node child, not Bun.');
   const workspace=path.resolve(flags.workspace ?? process.cwd()),storage=path.resolve(flags.storage ?? defaultStoragePath());
   const cli=fileURLToPath(import.meta.url);
-  if(passthrough.length && !['proxy','launch'].includes(cmd))throw new Error('Arguments after -- are only accepted for proxy and launch');
+  if(passthrough.length && cmd!=='proxy')throw new Error('Arguments after -- are only accepted for proxy');
   if(cmd==='setup' || cmd==='uninstall') {
-    const targets=rest[0]==='all'?['claude','codex','kimi','opencode'] as const:[agentTarget(rest[0])];
-    const changes=targets.flatMap(agent=>(cmd==='setup'?planSetup:planUninstall)({agent,workspace,storage,cli}));
-    if(flags['dry-run'])emit({dryRun:true,writes:changes.filter(c=>c.before!==c.after).map(c=>({file:c.file,reason:c.reason,backup:c.before!==null})),note:'No files written. Existing secrets are not printed.'});
-    else emit({...applySetup(changes),next:cmd==='uninstall'?'Restart the agent. Archives are untouched. Stop using cmm launch kimi to disable Kimi capture.':'Restart the agent and approve trusted hooks/MCP if asked. Use cmm launch kimi for Kimi capture. Re-run setup after moving CMM.'});
+    const all=rest[0]==='all',targets=all?['claude','codex','kimi','opencode'] as const:[agentTarget(rest[0])];
+    const changes:FileChange[]=[],skipped:{agent:AgentTarget;reason:string}[]=[];
+    for(const agent of targets) {
+      try {changes.push(...(cmd==='setup'?planSetup:planUninstall)({agent,workspace,storage,cli}));}
+      catch(error) {if(!all || !(error instanceof MissingHostConfig))throw error;skipped.push({agent,reason:error.message});}
+    }
+    const extra=skipped.length?{skipped}:{};
+    if(flags['dry-run'])emit({dryRun:true,writes:changes.filter(c=>c.before!==c.after).map(c=>({file:c.file,reason:c.reason,backup:c.before!==null})),...extra,note:'No files written. Existing secrets are not printed.'});
+    else emit({...applySetup(changes),...extra,next:cmd==='uninstall'?'Restart the agent. Archives are untouched.':'Restart the agent and approve trusted hooks/MCP if asked. Re-run setup after moving CMM.'});
     return;
   }
-  if(cmd==='launch') {if(rest[0]!=='kimi')throw new Error('Only Kimi needs a launch wrapper; use setup for other agents');await launchKimi(flags,passthrough,workspace,storage,cli);return;}
+  if(cmd==='launch')throw new Error('cmm launch kimi was removed: Kimi Code 2.x has no per-launch config flags. Run cmm setup kimi instead.');
   if(cmd==='config') {
     const cfg=loadConfig(storage);
     if(rest[0]==='set') {configSet(cfg,required(rest[1],'config key'),required(rest[2],'JSON value'));emit({saved:true,config:redactConfig(cfg)});}
@@ -217,7 +188,11 @@ export async function main(argv=process.argv.slice(2)):Promise<void> {
       // Descendant working directories are normal; never mix an unrelated workspace.
       const {normalizeWorkspaceId}=await import('./storage/archive.js');
       const relative=path.relative(normalizeWorkspaceId(workspace),normalizeWorkspaceId(parsed.cwd));
-      if(relative==='..' || relative.startsWith('..'+path.sep) || path.isAbsolute(relative))throw new Error('Hook cwd is outside the configured workspace');
+      if(relative==='..' || relative.startsWith('..'+path.sep) || path.isAbsolute(relative)) {
+        // Kimi hooks are user-level and run in every project; other projects are not an error.
+        if(agent==='kimi')return;
+        throw new Error('Hook cwd is outside the configured workspace');
+      }
       manager=ContextManager.open(storage);
       const service=new MemoryService(manager,{agent,workspaceId:workspace});
       const response=await executeHook(service,agent,parsed);if(response!==undefined)emit(response);

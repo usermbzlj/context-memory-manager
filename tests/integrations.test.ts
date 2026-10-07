@@ -1,11 +1,12 @@
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { parseHook, executeHook, errorStatus } from '../src/integrations/hooks.js';
-import { planSetup, applySetup, prepareKimiLaunch, replaceManagedBlock, shellQuote, type SetupOptions } from '../src/integrations/setup.js';
+import { parseHook, executeHook, errorStatus, KIMI_OUTPUT_LIMIT } from '../src/integrations/hooks.js';
+import { planSetup, planUninstall, applySetup, replaceManagedBlock, shellQuote, upsertKimiHooks, MissingHostConfig, type SetupOptions } from '../src/integrations/setup.js';
 import { createOpenCodePlugin, openCodeWorkspace, type OpenCodeToolFactory } from '../src/integrations/opencode.js';
 import { MemoryService } from '../src/runtime/memory.js';
 import { windowsBatchLine } from '../src/util/spawn.js';
@@ -15,7 +16,9 @@ const raw='initial log\n'+'important historical evidence\n'.repeat(2500)+'\n30 p
 async function fixture(t:TestContext,agent='claude') {const {manager,dir}=await makeManager();t.after(()=>cleanup(dir,manager));return {manager,dir,service:new MemoryService(manager,{agent,workspaceId:dir})};}
 function payload(cwd:string,changes:Record<string,unknown>={}) {return {hook_event_name:'PostToolUse',session_id:'host-same-id',tool_use_id:'call',cwd,tool_name:'Bash',tool_input:{command:'cat test.log'},tool_response:{stdout:raw,stderr:'do not lose stderr',interrupted:false,isImage:false,extra:'preserved'},...changes};}
 function toolFactory():OpenCodeToolFactory {const node:any={optional:()=>node,int:()=>node,min:()=>node,max:()=>node};const tool:any=(value:unknown)=>value;tool.schema={string:()=>node,number:()=>node,boolean:()=>node,enum:()=>node};return tool;}
-function run(args:string[],input?:string) {return spawnSync(process.execPath,[cli,...args],{input,encoding:'utf8',timeout:10000});}
+// CLI subprocesses must never reach the developer's real user-level Kimi config.
+const isolatedKimiHome=path.join(os.tmpdir(),'cmm-test-no-kimi-home-'+process.pid);
+function run(args:string[],input?:string,env:NodeJS.ProcessEnv={}) {return spawnSync(process.execPath,[cli,...args],{input,encoding:'utf8',timeout:10000,env:{...process.env,KIMI_CODE_HOME:isolatedKimiHome,...env}});}
 
 test('Claude native hook replaces only successful canonical Bash stdout and preserves all metadata',async t=>{
   const {service,dir}=await fixture(t);service.manager.config.integration.ingressCompression=true;const p=payload(dir);const before=structuredClone(p);const result=await executeHook(service,'claude',parseHook('claude',p)!) as any;
@@ -72,6 +75,17 @@ test('Claude setup preserves unrelated hooks and MCP servers, backs up originals
   const saved=JSON.parse(fs.readFileSync(hooks,'utf8'));assert.equal(saved.env.KEEP,'yes');assert.equal(saved.hooks.PostToolUse.length,2);
   assert.equal(JSON.parse(fs.readFileSync(mcp,'utf8')).mcpServers.existing.command,'my-existing-server');assert.equal(applySetup(planSetup(opts)).written.length,0);
 });
+test('Claude hooks use shell-free exec form and replace an older shell-form CMM handler',async t=>{
+  const {dir}=await fixture(t);fs.mkdirSync(path.join(dir,'.claude'));const file=path.join(dir,'.claude','settings.local.json');
+  const legacy={type:'command',command:'"node" "cli.js" hook claude --managed-by-cmm',timeout:15};
+  fs.writeFileSync(file,JSON.stringify({hooks:{PostToolUse:[{hooks:[legacy]},{matcher:'Read',hooks:[{type:'command',command:'keep-me'}]}]}}));
+  const opts:SetupOptions={agent:'claude',workspace:dir,storage:path.join(dir,"it's $HOME"),cli,node:process.execPath};applySetup(planSetup(opts));
+  const groups=JSON.parse(fs.readFileSync(file,'utf8')).hooks.PostToolUse;const handler=groups.at(-1).hooks[0];
+  assert.equal(groups.length,2);assert.equal(groups[0].hooks[0].command,'keep-me');
+  assert.equal(handler.command,process.execPath);assert.deepEqual(handler.args.slice(1,4),['hook','claude','--workspace']);
+  assert.ok(handler.args.includes(path.join(dir,"it's $HOME")),'arguments are passed verbatim without shell quoting');
+  applySetup(planUninstall(opts));assert.deepEqual(JSON.parse(fs.readFileSync(file,'utf8')).hooks.PostToolUse,[{matcher:'Read',hooks:[{type:'command',command:'keep-me'}]}]);
+});
 test('unmanaged config conflicts and malformed blocks are refused without overwriting',async t=>{
   const {dir}=await fixture(t);fs.mkdirSync(path.join(dir,'.codex'));const cfg=path.join(dir,'.codex','config.toml');const original='[mcp_servers . "context_memory"]\ncommand="someone-else"\n';fs.writeFileSync(cfg,original);
   assert.throws(()=>planSetup({agent:'codex',workspace:dir,storage:dir,cli}),/refusing/);assert.equal(fs.readFileSync(cfg,'utf8'),original);
@@ -92,13 +106,47 @@ test('Windows commands quote spaces and refuse shell metacharacters; POSIX apost
   assert.throws(()=>shellQuote('C:\\bad&path','win32'),/Unsupported/);assert.throws(()=>windowsBatchLine('kimi.cmd',['hello & bye']),/Unsafe/);
   assert.equal(shellQuote("a'b",'linux'),"'a'\\''b'");assert.match(windowsBatchLine('C:\\Program Files\\kimi.cmd',['--flag','a b']),/^""C:/);
 });
-test('Kimi launch uses a private temporary sibling and leaves original config untouched',async t=>{
-  const {dir}=await fixture(t);const source=path.join(dir,'config.toml');const before='default_model="existing"\n[[hooks]]\nevent="Stop"\ncommand="my-hook"\n';fs.writeFileSync(source,before);
-  const plan=prepareKimiLaunch({workspace:dir,storage:dir,cli,configFile:source});try {
-    const config=fs.readFileSync(plan.files[0],'utf8');assert.ok(config.startsWith(before));assert.match(config,/PostToolUseFailure/);assert.equal(path.dirname(plan.files[0]),dir);
-    assert.equal(fs.readFileSync(source,'utf8'),before);if(process.platform!=='win32')assert.equal(fs.statSync(plan.files[0]).mode&0o777,0o600);
-    assert.equal(plan.args.filter(v=>v==='--config-file').length,1);assert.ok(!plan.args.includes('--yolo'));
-  }finally{plan.cleanup();}assert.ok(plan.files.every(f=>!fs.existsSync(f)));
+test('Kimi setup adds per-workspace user-level hooks and project MCP; uninstall restores exact bytes',async t=>{
+  const {dir}=await fixture(t);const home=path.join(dir,'kimi-home');fs.mkdirSync(home);
+  const config=path.join(home,'config.toml');const before='default_model = "existing"\n\n[[hooks]]\nevent = "Stop"\ncommand = "my-hook"\n';fs.writeFileSync(config,before);
+  const a=path.join(dir,'project a'),b=path.join(dir,'project-b');fs.mkdirSync(a);fs.mkdirSync(b);
+  const opts=(workspace:string):SetupOptions=>({agent:'kimi',workspace,storage:dir,cli,kimiHome:home});
+  applySetup(planSetup(opts(a)));applySetup(planSetup(opts(b)));
+  const both=fs.readFileSync(config,'utf8');assert.ok(both.startsWith(before));
+  assert.equal(both.match(/^\[\[hooks\]\]$/gm)!.length,5);assert.ok(!/approval|yolo|auto/i.test(both.slice(before.length)));
+  assert.equal(applySetup(planSetup(opts(a))).written.length,0,'setup is idempotent');
+  const mcp=JSON.parse(fs.readFileSync(path.join(a,'.kimi-code','mcp.json'),'utf8')).mcpServers.context_memory;
+  assert.deepEqual(mcp.args.slice(1,5),['serve','--agent','kimi','--workspace']);
+  applySetup(planUninstall(opts(a)));const onlyB=fs.readFileSync(config,'utf8');
+  assert.equal(onlyB.match(/^\[\[hooks\]\]$/gm)!.length,3);assert.ok(!onlyB.includes(shellQuote(a).replaceAll('"','\\"')));
+  applySetup(planUninstall(opts(b)));assert.equal(fs.readFileSync(config,'utf8'),before);
+});
+test('Kimi hooks are recognized after a comment-dropping rewrite; unsafe forms and missing config are refused',async t=>{
+  const {dir}=await fixture(t);const home=path.join(dir,'kimi-home');fs.mkdirSync(home);const config=path.join(home,'config.toml');
+  // Windows quoting uses double quotes, so the rewrite can be a valid TOML literal string.
+  const opts:SetupOptions={agent:'kimi',workspace:dir,storage:dir,cli,kimiHome:home,platform:'win32'};
+  assert.throws(()=>planSetup(opts),MissingHostConfig);
+  const rewritten=upsertKimiHooks('model = "m"\n',opts).replace(/^#.*\n/gm,'').replace(/^command = "(.*)"$/gm,(_m,v)=>`command = '${JSON.parse('"'+v+'"')}'`);
+  fs.writeFileSync(config,rewritten);applySetup(planUninstall(opts));assert.equal(fs.readFileSync(config,'utf8'),'model = "m"\n');
+  fs.writeFileSync(config,'hooks = [{event = "Stop", command = "x"}]\n');assert.throws(()=>planSetup(opts),/table form/);
+});
+test('Kimi 2,000-unit tool_output prefixes are partial evidence and are never projected again',async t=>{
+  const {service,dir}=await fixture(t,'kimi');service.manager.config.integration.ingressCompression=true;
+  const prefix='x'.repeat(KIMI_OUTPUT_LIMIT-1)+'\uD83D';
+  const parsed=parseHook('kimi',payload(dir,{tool_use_id:undefined,tool_call_id:'kimi-call',tool_output:prefix}))!;
+  assert.equal(parsed.capture.toolCallId,'kimi-call');assert.equal(parsed.capture.result,'x'.repeat(KIMI_OUTPUT_LIMIT-1));
+  await executeHook(service,'kimi',parsed);const id=service.lookup('host-same-id','kimi-call','Bash')!.eventId;
+  assert.equal(service.explain(id).provenance.completeness,'partial');
+  assert.equal((await service.project(id,parsed.capture.result,'ingress')).replaced,false);
+  const short=parseHook('kimi',payload(dir,{tool_call_id:'short',tool_output:'complete short output'}))!;assert.equal(short.capture.provenance,undefined);
+});
+test('a user-level Kimi hook ignores other projects silently',async t=>{
+  const {dir}=await fixture(t);const elsewhere=run(['hook','kimi','--workspace',dir,'--storage',dir],JSON.stringify(payload(path.dirname(dir),{tool_output:'x'})));
+  assert.equal(elsewhere.status,0);assert.equal(elsewhere.stdout,'');assert.equal(elsewhere.stderr,'');
+});
+test('removed Kimi launch wrapper explains the supported setup',async t=>{
+  const {dir}=await fixture(t);const launched=run(['launch','kimi','--workspace',dir,'--storage',dir]);
+  assert.equal(launched.status,1);assert.match(launched.stderr,/cmm setup kimi/);
 });
 test('OpenCode contract changes only completed tool-result text; user/prose/input/attachments remain intact',async()=>{
   const calls:any[]=[];const bridge={async request(method:string,params:any){calls.push({method,params});if(method==='capture')return {archived:true,eventId:'event'};if(method==='transform')return {projections:[{eventId:'event',text:'compact evidence',replaced:true}]};return {};},close(){}};

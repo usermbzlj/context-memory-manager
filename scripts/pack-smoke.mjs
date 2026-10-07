@@ -36,8 +36,13 @@ try {
   assert.equal(run([cli,'--version']).trim(),meta.version);
   const demo=JSON.parse(run([cli,'demo']));assert.equal(demo.exactRecallVerified,true);assert.ok(demo.projectedChars<demo.originalChars);
   const state=path.join(tmp,'state');const workspace=path.join(tmp,'workspace');fs.mkdirSync(workspace);
-  const preview=JSON.parse(run([cli,'setup','all','--dry-run','--workspace',workspace,'--storage',state]));assert.equal(preview.dryRun,true);assert.equal(fs.existsSync(state),false);
-  run([cli,'setup','all','--workspace',workspace,'--storage',state]);run([cli,'uninstall','all','--workspace',workspace,'--storage',state]);
+  // Kimi hooks are user-level; never touch the developer's real Kimi Code config.
+  const kimiHome=path.join(tmp,'kimi-home'),kimiConfig=path.join(kimiHome,'config.toml'),kimiBefore='default_model = "fixture"\n';
+  fs.mkdirSync(kimiHome);fs.writeFileSync(kimiConfig,kimiBefore);const env={...process.env,KIMI_CODE_HOME:kimiHome};
+  const preview=JSON.parse(run([cli,'setup','all','--dry-run','--workspace',workspace,'--storage',state],{env}));assert.equal(preview.dryRun,true);assert.equal(fs.existsSync(state),false);
+  assert.ok(preview.writes.some(w=>w.file===kimiConfig));assert.equal(fs.readFileSync(kimiConfig,'utf8'),kimiBefore);
+  run([cli,'setup','all','--workspace',workspace,'--storage',state],{env});assert.match(fs.readFileSync(kimiConfig,'utf8'),/PostToolUseFailure/);
+  run([cli,'uninstall','all','--workspace',workspace,'--storage',state],{env});assert.equal(fs.readFileSync(kimiConfig,'utf8'),kimiBefore);
   const child=spawn(process.execPath,[cli,'serve','--workspace',workspace,'--storage',state],{stdio:'pipe'});
   lifecycle=observeChild(child);
   let id=0;const waiting=new Map();const lines=createInterface({input:child.stdout});let failure='';child.stderr.on('data',b=>failure+=b.toString());
