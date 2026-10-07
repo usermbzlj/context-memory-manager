@@ -16,7 +16,7 @@ export function integer(value: unknown, label: string, min: number, max: number)
 }
 export function utf8(value: unknown, label: string): asserts value is string {
   if (typeof value !== 'string') throw new Error(`${label} must be a string`);
-  if (Buffer.from(value, 'utf8').toString('utf8') !== value) throw new Error(`${label} contains an unpaired Unicode surrogate`);
+  if (!value.isWellFormed()) throw new Error(`${label} contains an unpaired Unicode surrogate`);
 }
 export function stableJson(value: unknown): string {
   return JSON.stringify(value, (_key, v: unknown) => {

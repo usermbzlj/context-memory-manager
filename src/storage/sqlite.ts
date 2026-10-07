@@ -764,14 +764,6 @@ export class Database {
     return out;
   }
 
-  incrementMany(counts: Record<string, number>): void {
-    this.transaction(() => {
-      for (const [key, delta] of Object.entries(counts)) {
-        this.bumpStat(key, delta);
-      }
-    });
-  }
-
   // ------------------------------------------------------------------
   // Audit
   // ------------------------------------------------------------------

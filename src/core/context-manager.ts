@@ -147,9 +147,11 @@ export class ContextManager {
     });
     const preset = activePreset(cfg);
     // Primary retention scorer is configurable (PRD §10: Jev is the
-    // default implementation, not a hard dependency).
+    // default implementation, not a hard dependency). Without retention
+    // providers Jev can only fail, so score deterministically instead of
+    // logging a provider fallback for every event.
     let primary: RetentionScorer;
-    if (cfg.retention.scorer === 'conservative') {
+    if (cfg.retention.scorer === 'conservative' || cfg.providers.retention.length === 0) {
       primary = new ConservativeFallbackScorer();
     } else {
       primary = new JevScorer({

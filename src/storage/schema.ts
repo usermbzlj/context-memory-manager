@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS tool_events (
   recalled_count INTEGER NOT NULL DEFAULT 0,
   last_recalled_at INTEGER,
   capsule_id TEXT,
-  UNIQUE(agent, workspace_id, tool_call_id)
+  UNIQUE(agent, workspace_id, session_id, tool_call_id)
 );
 
 CREATE TABLE IF NOT EXISTS chains (
@@ -208,6 +208,9 @@ export function runMigrations(db: DbLike): void {
       const oldSql = (db.prepare("SELECT sql FROM sqlite_master WHERE name = 'tool_events'").get() as {sql: string}).sql;
       const updated = oldSql.replace(/CREATE TABLE(?: IF NOT EXISTS)? ["`]?tool_events["`]?/i, 'CREATE TABLE tool_events_upgrade')
         .replace('UNIQUE(agent, workspace_id, tool_call_id)', 'UNIQUE(agent, workspace_id, session_id, tool_call_id)');
+      // Host session IDs are namespaced; a session-blind key would merge distinct invocations.
+      if (!updated.includes('UNIQUE(agent, workspace_id, session_id, tool_call_id)'))
+        throw new Error('Unrecognized legacy tool_events definition; refusing a migration that could merge sessions');
       db.exec(updated);
       db.exec(`INSERT INTO tool_events_upgrade SELECT * FROM tool_events;
         DROP TABLE tool_events; ALTER TABLE tool_events_upgrade RENAME TO tool_events;

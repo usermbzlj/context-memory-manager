@@ -21,7 +21,7 @@ describe('fallback scorer never evicts', () => {
   let dir: string;
 
   beforeEach(async () => {
-    // No providers configured => Jev throws => conservative fallback.
+    // No providers configured => the conservative scorer is primary.
     ({ manager, dir } = await makeManager({ strategy: 'aggressive' }));
   });
 
