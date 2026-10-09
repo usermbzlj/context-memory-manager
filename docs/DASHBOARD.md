@@ -1,6 +1,6 @@
 # Local management dashboard
 
-Use Node >=22.13 with an existing `config.json` and `cmm.db` storage directory. The source
+Use Node >=22.16 with an existing `config.json` and `cmm.db` storage directory. The source
 checkout requires `npm run build`; the distributable already contains the browser assets.
 
 ```powershell

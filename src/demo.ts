@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {isEntryPoint} from './util/entry.js';
 import {ContextManager} from './core/context-manager.js';
 import {MemoryService} from './runtime/memory.js';
 import {sha256} from './storage/blob-store.js';
@@ -55,4 +55,4 @@ export async function runDemo(): Promise<void> {
       excerpt:projected.text.slice(0,800)},null,2)+'\n');
   } finally {manager.close();fs.rmSync(dir,{recursive:true,force:true});}
 }
-if(process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url))runDemo().catch(e=>{console.error(e);process.exitCode=1;});
+if(isEntryPoint(import.meta.url))runDemo().catch(e=>{console.error(e);process.exitCode=1;});

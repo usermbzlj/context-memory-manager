@@ -1,6 +1,6 @@
 # Contributing
 
-Use Node >=22.13. Runtime dependencies are deliberately empty.
+Use Node >=22.16 (the first Node 22 release whose `node:sqlite` includes FTS5). Runtime dependencies are deliberately empty.
 
 ```sh
 npm ci --ignore-scripts

@@ -15,7 +15,7 @@ No runtime npm dependencies, account, required model key, telemetry service or h
 
 ## Try it without changing an agent
 
-Requires **Node.js >=22.13**; Node 24 LTS or newer is recommended (Windows checks use 24.19.0). Extract the source-with-build ZIP
+Requires **Node.js >=22.16** (its `node:sqlite` is the first Node 22 build with FTS5); Node 24 LTS or newer is recommended (Windows checks use 24.19.0). Extract the source-with-build ZIP
 and run from its project directory:
 
 ```powershell
@@ -34,7 +34,7 @@ cmm demo
 ```
 
 The package is supplied locally; these instructions do not imply an npm publication.
-On Node 22, Node prints an experimental SQLite warning to stderr. Protocol stdout remains JSON only.
+Node 22's experimental `node:sqlite` warning is suppressed in CMM processes so hooks leave the host's stderr empty; every other warning still prints. Protocol stdout remains JSON only.
 
 ## Local management dashboard
 

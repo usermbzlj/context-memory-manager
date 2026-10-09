@@ -8,7 +8,7 @@
 
 ## 先运行离线演示
 
-需要 **Node.js 22.13 或更新版本**，推荐 Node 24 LTS 及以上；Node 22 会在 stderr 打印 SQLite 实验性警告，不影响 JSON 输出。解压带预构建程序的 ZIP，在项目目录打开 PowerShell：
+需要 **Node.js 22.16 或更新版本**（Node 22 中首个 `node:sqlite` 内置 FTS5 的版本），推荐 Node 24 LTS 及以上；CMM 进程会屏蔽 Node 22 的 SQLite 实验性警告，Hook 不向宿主 stderr 输出，其他警告照常显示。解压带预构建程序的 ZIP，在项目目录打开 PowerShell：
 
 ```powershell
 node .\dist\src\cli.js demo

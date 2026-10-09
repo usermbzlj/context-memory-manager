@@ -1,3 +1,4 @@
+import '../util/quiet-sqlite.js';
 import { ContextManager } from '../core/context-manager.js';
 import { MemoryService } from '../runtime/memory.js';
 import { ManagementService, ManagementError, publicFailure } from '../management/service.js';

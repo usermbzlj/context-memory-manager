@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './util/quiet-sqlite.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,7 @@ import { planSetup, planUninstall, applySetup, MissingHostConfig, type AgentTarg
 import type { ContextManager as Manager } from './core/context-manager.js';
 
 import { VERSION } from './version.js';
+import { isEntryPoint } from './util/entry.js';
 export { VERSION };
 const HELP=`Context Memory Manager ${VERSION}
 Keep the evidence. Shrink the context. Recall the original.
@@ -142,7 +144,7 @@ export async function main(argv=process.argv.slice(2)):Promise<void> {
   if(flags.version || cmd==='version') {process.stdout.write(VERSION+'\n');return;}
   if(flags.help || cmd==='help') {process.stdout.write(HELP);return;}
   const [major,minor]=process.versions.node.split('.').map(Number);
-  if(major<22 || major===22 && minor<13)throw new Error('Node.js >=22.13 is required. OpenCode runs this core in a Node child, not Bun.');
+  if(major<22 || major===22 && minor<16)throw new Error('Node.js >=22.16 is required (its node:sqlite includes FTS5). OpenCode runs this core in a Node child, not Bun.');
   const workspace=path.resolve(flags.workspace ?? process.cwd()),storage=path.resolve(flags.storage ?? defaultStoragePath());
   const cli=fileURLToPath(import.meta.url);
   if(passthrough.length && cmd!=='proxy')throw new Error('Arguments after -- are only accepted for proxy');
@@ -295,7 +297,7 @@ export async function main(argv=process.argv.slice(2)):Promise<void> {
   }
 }
 // Importable for contract tests; executing the published bin runs exactly once.
-if(process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
+if(isEntryPoint(import.meta.url)) {
   main().catch(error=>{
     process.stderr.write('[cmm] '+terminalSafe(errorMessage(error)).slice(0,1000)+'\n');
     // Malformed hook arguments also fail open. Never block the host's successful tool.
