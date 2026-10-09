@@ -25,4 +25,24 @@ export async function command<T = Data>(method: string, params: Data = {}): Prom
   return decode(await fetch('/api/command', {method:'POST', credentials:'same-origin', cache:'no-store', headers:{'Content-Type':'application/json','X-CMM-CSRF':csrfToken}, body:JSON.stringify({method,params})}));
 }
 export const errorText = (error: unknown) => error instanceof ApiError ? `${error.message} (${error.code})` : error instanceof Error ? error.message : '发生未知错误';
-export function downloadUrl(scopeId: string, eventId: string, field: string) { return '/api/download?' + new URLSearchParams({scopeId,eventId,field}); }
+/** Server-side cap; a larger known size is explained in the UI instead of attempting the request. */
+export const DOWNLOAD_LIMIT = 32 * 1024 * 1024;
+const hex = (buffer: ArrayBuffer) => [...new Uint8Array(buffer)].map(b => b.toString(16).padStart(2, '0')).join('');
+/** Fetches the exact original as a blob with the session cookie; failures stay inside the SPA as ApiError. */
+export async function download(scopeId: string, eventId: string, field: string): Promise<{blob: Blob; filename: string}> {
+  const response = await fetch('/api/download?' + new URLSearchParams({scopeId,eventId,field}), {credentials:'same-origin', cache:'no-store'});
+  if (!response.ok) await decode(response);
+  const bytes = await response.arrayBuffer();
+  const expected = response.headers.get('x-content-sha256');
+  // The server already verified the archive hash; this catches transit/proxy damage. subtle is unavailable outside secure contexts.
+  if (expected && globalThis.crypto?.subtle && hex(await crypto.subtle.digest('SHA-256', bytes)) !== expected)
+    throw new ApiError('HASH_MISMATCH', '下载内容的 SHA-256 与服务端不一致，已放弃保存。');
+  const filename = /filename="([^"]+)"/.exec(response.headers.get('content-disposition') ?? '')?.[1] ?? `${eventId}-${field}.txt`;
+  return {blob: new Blob([bytes], {type:'text/plain;charset=utf-8'}), filename};
+}
+export function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob), link = document.createElement('a');
+  link.href = url; link.download = filename; link.rel = 'noopener'; link.hidden = true;
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}

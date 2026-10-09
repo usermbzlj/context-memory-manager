@@ -85,6 +85,8 @@ test('settings credentials are write-only and preserved, replaced and deleted un
   dto=await service.execute('settings',{}) as any;
   await service.execute('saveSettings',{expectedRevision:dto.revision,patch:{providers:{retention:[entry]}}});
   assert.equal(loadConfig(dir).providers.retention[0].apiKey,'PRIVATE_KEY');
+  assert.equal(loadConfig(dir).providers.retention[0].model,'changed');
+  assert.equal(loadConfig(dir).providers.retention[0].baseUrl,cfg.providers.retention[0].baseUrl,'A model-only edit must keep the stored URL query and fragment');
   dto=await service.execute('settings',{}) as any;
   const before=fs.readFileSync(path.join(dir,'config.json'));
   for(const bad of [{providers:{retention:[{...entry,keyAction:'replace',newKey:'[REDACTED]'}]}},{providers:{retention:[{...entry,baseUrl:'https://example.invalid/?key=secret'}]}},{storage:{path:dir+'-foreign'}},{providers:{retention:[{...entry,apiKey:'secret'}]}}]){
@@ -142,4 +144,41 @@ test('content enforces the absolute 64,000-unit boundary without splitting Unico
   assert.equal(first.text.length,63999);assert.equal(first.nextOffset,63999);
   const second=await service.execute('content',{scopeId,eventId:id,offset:first.nextOffset,limit:64000}) as any;
   assert.equal(first.text+second.text,text);
+});
+
+test('settings reject carrying a stored key to another origin and credentials over cleartext http',async t=>{
+  const {dir,service}=await fixture(t);const cfg=loadConfig(dir);
+  cfg.providers.retention=[{kind:'openai-compatible',name:'remote',model:'m',apiKey:'PRIVATE_KEY',baseUrl:'https://api.example.test/v1?api-version=2024-01'}];saveConfig(cfg);
+  const entry={kind:'openai-compatible',name:'remote',model:'m',baseUrl:'https://api.example.test/v1',keyAction:'keep'};
+  const attempt=async(provider:Record<string,unknown>)=>service.execute('saveSettings',{expectedRevision:configRevision(dir),patch:{providers:{retention:[provider]}}});
+  const before=fs.readFileSync(path.join(dir,'config.json'));
+  for(const baseUrl of ['https://other.example.test/v1','https://api.example.test:8443/v1','http://127.0.0.1:9/v1',undefined]) {
+    await assert.rejects(attempt({...entry,baseUrl}),/stored API key cannot be kept/,String(baseUrl));
+    assert.deepEqual(fs.readFileSync(path.join(dir,'config.json')),before);
+  }
+  await assert.rejects(attempt({...entry,keyAction:'replace',newKey:'K2',baseUrl:'http://10.0.0.5/v1'}),/requires an https baseUrl/);
+  await assert.rejects(attempt({...entry,keyAction:'delete',apiKeyEnv:'CMM_ENV_KEY',baseUrl:'http://10.0.0.5/v1'}),/requires an https baseUrl/);
+  await assert.rejects(attempt({...entry,apiKeyEnv:'bad-name'}),/Invalid API key environment variable/);
+  assert.deepEqual(fs.readFileSync(path.join(dir,'config.json')),before);
+  await attempt({...entry,model:'edited'});
+  assert.equal(loadConfig(dir).providers.retention[0].baseUrl,'https://api.example.test/v1?api-version=2024-01');
+  await attempt({...entry,keyAction:'replace',newKey:'K2',baseUrl:'http://localhost:1234/v1'});
+  assert.equal(loadConfig(dir).providers.retention[0].apiKey,'K2');
+  await attempt({...entry,keyAction:'delete',baseUrl:'http://10.0.0.5/v1'});
+  assert.equal(loadConfig(dir).providers.retention[0].apiKey,undefined);
+});
+
+test('a save whose writer lock cannot be removed is reported as saved with a static warning, not as a failure',async t=>{
+  const {dir,service}=await fixture(t);const lock=path.join(dir,'config.write.lock');
+  // Runs inside the lock: move our lock file away and put a directory in its place, so releasing it fails with a non-busy error.
+  const patch={integration:{captureOnly:true},get strategy(){fs.renameSync(lock,lock+'.moved');fs.mkdirSync(lock);return 'conservative';}};
+  const result=await service.execute('saveSettings',{expectedRevision:configRevision(dir),patch}) as any;
+  assert.equal(result.saved,true);assert.equal(result.reloadRequired,true);assert.equal(result.strategy,'conservative');assert.equal(result.integration.captureOnly,true);
+  assert.deepEqual(result.warning,{code:'CONFIG_LOCK_LEFT',message:'Settings were saved, but the configuration writer lock could not be removed. Close other CMM processes, then delete config.write.lock in the storage folder.'});
+  assert.equal(result.revision,configRevision(dir),'the returned revision is the saved file, so the next save does not conflict');
+  assert.equal(loadConfig(dir).strategy,'conservative');assert.equal(loadConfig(dir).integration.captureOnly,true);
+  assert.ok(!JSON.stringify(result.warning).includes(dir),'no path reaches the browser');
+  fs.rmdirSync(lock);
+  await service.execute('saveSettings',{expectedRevision:result.revision,patch:{strategy:'aggressive'}});
+  assert.equal(loadConfig(dir).strategy,'aggressive');
 });

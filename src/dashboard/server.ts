@@ -3,12 +3,15 @@ import { fork, spawn } from 'node:child_process';
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pipeline } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { observeChild } from '../util/child-lifecycle.js';
 import { loadConfig } from '../config.js';
 import { enableRuntime, readRuntime, createRuntimeObserver } from '../observability/runtime.js';
 
 type Data = Record<string, unknown>;
+// Worker close can wait for a queued operation (up to ~1.5 s of job wind-down plus the SQLite close), so SIGTERM must come late.
+const workerShutdown = {graceMs:5000,forceMs:8000,deadlineMs:12000};
 type PublicError = { code: string; status?: number; message: string };
 const methods = new Set(['scopes','overview','list','detail','chain','capsule','content','pin','settings',
   'saveSettings','testProvider','diagnostics','runtime','startJob','jobs','cancelJob']);
@@ -35,19 +38,24 @@ function json(res: ServerResponse, status: number, value: unknown) {
   res.end(JSON.stringify(value));
 }
 
-export async function startDashboard(options: {storage: string; port?: number; agent?: string; workspace?: string; open?: boolean}) {
+/** Injectable only so tests can stall a worker without waiting minutes. */
+export interface DashboardInternals { worker?: string; requestMs?: number; lateMs?: number }
+export async function startDashboard(options: {storage: string; port?: number; agent?: string; workspace?: string; open?: boolean; internals?: DashboardInternals}) {
   if (!fs.existsSync(path.join(options.storage,'config.json')) || !fs.existsSync(path.join(options.storage,'cmm.db')))
     throw new Error('Choose an existing CMM storage containing config.json and cmm.db.');
   if (!fs.existsSync(path.join(assetsRoot,'index.html'))) throw new Error('Dashboard assets missing; run npm run build.');
   loadConfig(options.storage);
   if (!Number.isInteger(options.port ?? 0) || (options.port ?? 0) < 0 || (options.port ?? 0) > 65535) throw new Error('Invalid port');
   const lease = enableRuntime(options.storage);
-  const child = fork(fileURLToPath(new URL('./worker.js',import.meta.url)), [options.storage], {
+  const child = fork(options.internals?.worker ?? fileURLToPath(new URL('./worker.js',import.meta.url)), [options.storage], {
     stdio:['pipe','ignore','ignore','ipc'], windowsHide:true,
   });
   const lifecycle = observeChild(child);
   let workerReady = false, stopped = false, nextId = 0;
+  let started = false, cookieName = 'cmm_session', cookiePattern = /^$/;
   const pending = new Map<number,{resolve:(value:unknown)=>void;reject:(error:unknown)=>void;timer:ReturnType<typeof setTimeout>}>();
+  let exitedResolve:()=>void;
+  const exited = new Promise<void>(resolve => {exitedResolve=resolve;});
   const jobs = new Map<string,Data>();
   let readyResolve:()=>void, readyReject:(error:unknown)=>void;
   const ready = new Promise<void>((resolve,reject) => {readyResolve=resolve;readyReject=reject;});
@@ -72,13 +80,22 @@ export async function startDashboard(options: {storage: string; port?: number; a
     for (const call of pending.values()) {clearTimeout(call.timer);call.reject({status:503,code:'WORKER_STOPPED',message:'管理进程已停止。'});}
     pending.clear();
     for (const job of jobs.values()) if (job.status === 'running') {job.status='interrupted';job.finishedAt=Date.now();}
+    // A dead worker cannot be replaced safely mid-session (jobs and settings state live in it): stop the whole panel.
+    if (started && !stopped) void stop().catch(()=>{}).finally(exitedResolve);
   });
-  const request = (method:string, params:Data={}):Promise<unknown> => {
+  // late keeps the pending entry after a timeout so a delayed worker answer still reconciles server state instead of being dropped;
+  // a worker that never answers cannot hold a queue slot (or leave its job "running") longer than lateMs.
+  const request = (method:string, params:Data={}, late?:{message:string;rejected:()=>void}):Promise<unknown> => {
     if (!workerReady) return Promise.reject({status:503,code:'WORKER_UNAVAILABLE',message:'管理进程不可用。'});
     if (pending.size >= 16) return Promise.reject({status:429,code:'QUEUE_LIMIT',message:'操作队列已满。'});
     const id=++nextId;
     return new Promise((resolve,reject) => {
-      const timer=setTimeout(()=>{pending.delete(id);reject({status:504,code:'TIMEOUT',message:'操作超时，未自动重试。'});},30000);
+      const timer=setTimeout(()=>{
+        const call=pending.get(id);
+        if(late && call){call.resolve=()=>{};call.reject=late.rejected;
+          call.timer=setTimeout(()=>{if(pending.get(id)===call){pending.delete(id);late.rejected();}},options.internals?.lateMs ?? 300000);call.timer.unref();reject({status:504,code:'TIMEOUT',message:late.message});return;}
+        pending.delete(id);reject({status:504,code:'TIMEOUT',message:'操作超时，未自动重试。'});
+      },options.internals?.requestMs ?? 30000);
       pending.set(id,{resolve,reject,timer});
       child.send({id,method,params}, error=>{if(error){clearTimeout(timer);pending.delete(id);reject({status:503,code:'WORKER_UNAVAILABLE',message:'管理进程不可用。'});}});
     });
@@ -126,10 +143,10 @@ export async function startDashboard(options: {storage: string; port?: number; a
           if(bootstrapUsed || typeof data.token!=='string' || !equal(data.token,bootstrap))fail(401,'AUTH_REQUIRED','启动凭据无效，请重新打开启动链接。');
           bootstrapUsed=true;
           const id=token(),csrf=token();sessions.set(id,{csrf,expires:Date.now()+8*60*60*1000});
-          res.setHeader('set-cookie',`cmm_session=${id}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=28800`);
+          res.setHeader('set-cookie',`${cookieName}=${id}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=28800`);
           json(res,200,{csrfToken:csrf,preference:{agent:options.agent,workspaceId:options.workspace}});return;
         }
-        const cookie=/(?:^|;\s*)cmm_session=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie ?? '')?.[1];
+        const cookie=cookiePattern.exec(req.headers.cookie ?? '')?.[1];
         const session=cookie ? sessions.get(cookie) : undefined;
         if(!session || session.expires<Date.now())fail(401,'AUTH_REQUIRED','请使用启动链接连接看板。');
         const authenticated=session!;
@@ -156,7 +173,8 @@ export async function startDashboard(options: {storage: string; port?: number; a
           if(jobs.size>=50){const completed=[...jobs.entries()].find(([,j])=>j.status!=='running');if(completed)jobs.delete(completed[0]);}
           const id=randomUUID(), job:Data={id,scopeId:params.scopeId,reindex:params.reindex===true,status:'running',startedAt:Date.now(),progress:{checked:0,total:0}};
           jobs.set(id,job);
-          try{await request('startJob',{...params,id});}catch(e){jobs.delete(id);throw e;}
+          try{await request('startJob',{...params,id},{message:'启动确认超时；任务可能已在后台启动，请在维护任务列表中查看。',rejected:()=>{jobs.delete(id);}});}
+          catch(e){if((e as PublicError).code!=='TIMEOUT')jobs.delete(id);throw e;}
           result=job;
         }else if(data.method==='jobs'){
           await request('scope',{scopeId:params.scopeId});result={jobs:[...jobs.values()].filter(j=>j.scopeId===params.scopeId)};
@@ -176,7 +194,7 @@ export async function startDashboard(options: {storage: string; port?: number; a
       const real=fs.realpathSync(target);if(!real.startsWith(fs.realpathSync(assetsRoot)+path.sep))fail(404,'NOT_FOUND','资源不存在。');
       const mime:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.woff2':'font/woff2'};
       res.writeHead(200,{'content-type':mime[path.extname(target)] ?? 'application/octet-stream'});
-      if(req.method==='HEAD')res.end();else fs.createReadStream(target).pipe(res);
+      if(req.method==='HEAD')res.end();else pipeline(fs.createReadStream(target),res,error=>{if(error)res.destroy();});
     }catch(error){
       const e=error as PublicError;
       const exposed = typeof e.code==='string' && /^[A-Z_]+$/.test(e.code) && Number.isInteger(e.status) && Number(e.status)>=400 && Number(e.status)<=599;
@@ -186,22 +204,31 @@ export async function startDashboard(options: {storage: string; port?: number; a
   });
   server.requestTimeout=10000;server.headersTimeout=5000;server.maxHeadersCount=40;
   let observer:ReturnType<typeof createRuntimeObserver>|undefined;
-  const close=async()=>{
-    if(stopped)return;stopped=true;
+  let stopping:Promise<void>|undefined;
+  const stop=():Promise<void>=>stopping ??= (async()=>{
+    stopped=true;
     lease.stop();observer?.close();
     const closed=new Promise<void>(resolve=>server.close(()=>resolve()));server.closeIdleConnections();
-    await lifecycle.shutdown();await closed;
-  };
+    // Keep-alive browser connections must not hold the process open after shutdown began.
+    setTimeout(()=>server.closeAllConnections(),2000).unref();
+    await lifecycle.shutdown(workerShutdown);await closed;
+  })();
+  const close=stop;
   try {
     await ready;
     await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(options.port ?? 0,'127.0.0.1',()=>{server.off('error',reject);resolve();});});
     origin=`http://127.0.0.1:${(server.address() as {port:number}).port}`;
+    // Cookies are not isolated by port; a per-port name keeps two dashboards on 127.0.0.1 from overwriting each other's login.
+    const port=(server.address() as {port:number}).port;
+    cookieName=`cmm_session_${port}`;cookiePattern=new RegExp(`(?:^|;\\s*)${cookieName}=([a-f0-9]{64})(?:;|$)`);
+    if(lifecycle.didClose)throw new Error('Dashboard worker stopped');
     observer=createRuntimeObserver(options.storage,{component:'dashboard',persistent:true});
-  }catch(error){clearTimeout(readyTimer);lease.stop();await lifecycle.shutdown();throw error;}
+    started=true;
+  }catch(error){clearTimeout(readyTimer);lease.stop();if(server.listening)server.close();await lifecycle.shutdown(workerShutdown);throw error;}
   const launchUrl=origin+'/#token='+bootstrap;
   if(options.open){
     if(process.platform==='win32'){const opener=spawn('rundll32.exe',['url.dll,FileProtocolHandler',launchUrl],{windowsHide:true,stdio:'ignore'});opener.on('error',()=>{});opener.unref();}
     else {const opener=spawn(process.platform==='darwin'?'open':'xdg-open',[launchUrl],{stdio:'ignore'});opener.on('error',()=>{});opener.unref();}
   }
-  return {url:origin,launchUrl,close,server,workerPid:child.pid};
+  return {url:origin,launchUrl,close,exited,server,workerPid:child.pid};
 }

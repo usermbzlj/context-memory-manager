@@ -3,22 +3,53 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ContextManager } from '../core/context-manager.js';
 import { MemoryService } from '../runtime/memory.js';
-import { loadConfig, configRevision, ConfigConflictError } from '../config.js';
+import { loadConfig, configRevision, ConfigConflictError, ConfigLockLeftError } from '../config.js';
 import { buildProviders } from '../providers/index.js';
 import { provenanceFor } from '../evidence/provenance.js';
 import { indexCoverage } from '../evidence/index.js';
 import { searchEvidence } from '../evidence/search.js';
 import { integer, text } from '../util/validation.js';
 import { safeEnd } from '../util/text.js';
-import { readSettings, saveSettings } from './settings.js';
+import { publicSettings, readSettings, saveSettings } from './settings.js';
 import type { CapsuleRow, ToolEventRow } from '../types.js';
 
 interface Scope {id:string;agent:string;workspaceId:string;path:string;createdAt:number}
 type Row = Record<string, any>;
 const eventColumns = 'e.id,e.agent,e.workspace_id,e.session_id,e.tool_call_id,e.tool_name,e.status,e.turn,e.created_at,e.archived_at,e.input_sha,e.input_bytes,e.result_sha,e.result_bytes,e.chain_id,e.capsule_id,e.pinned,e.persistent_pin,e.state,e.safe_to_evict,e.protected_until_turn,e.recalled_count,e.last_recalled_at';
+/** Known, safe failure kinds. Everything else reaches the browser as a generic failure. */
+export class ManagementError extends Error {
+  constructor(readonly status:number,readonly code:string,message:string) { super(message); this.name='ManagementError'; }
+}
+const downloadLimit = 32*1024*1024;
+const publicMessages:Record<string,string> = {
+  NOT_FOUND:'所选范围或记录不可用。',CONFIG_CONFLICT:'配置已被修改，请重新加载设置后再保存。',CONFIG_BUSY:'配置正在被写入，请稍后重新加载设置。',
+  MAINTENANCE_RUNNING:'已有维护任务正在执行。',SIZE_LIMIT:'原文超过 32 MiB 下载上限；请改用分页浏览或 context_recall。',
+  INVALID_CURSOR:'分页游标无效或已过期，请重新加载列表。',WORKER_CLOSING:'管理进程正在关闭。',
+};
+const validationMessage = /^[\w.]+ (?:must be (?:an object|a string|a nonempty string of at most \d+ characters \(no NUL\)|an integer in \[-?\d+, \d+\])|contains an unpaired Unicode surrogate)$|^(?:offset exceeds totalChars=\d+|offset splits a Unicode character; use the previous page nextOffset|find must be 1\.\.1000 characters|pinned must be boolean|reindex must be boolean|Invalid (?:content field|filter|pinned filter|completeness|status|role|list kind|provider role))$/;
+const notFoundMessage = /^(?:Event not available in this agent\/workspace scope|event not found|no archived event)/;
+const unsafeSettingsMessage = /lock|Cannot read|could not be removed|Settings were saved|[A-Za-z]:[\\/]|\/\w+\//i;
+/** Maps an internal error to a status, code and message that may cross the browser boundary. */
+export function publicFailure(error:unknown,method?:string):{status:number;code:string;message:string}|undefined {
+  const e = error as {name?:string;code?:unknown;message?:unknown} | null;
+  if (error instanceof ManagementError) return {status:error.status,code:error.code,message:error.code==='INVALID_REQUEST'?error.message:publicMessages[error.code] ?? error.message};
+  if (error instanceof ConfigLockLeftError) return {status:500,code:error.code,message:error.message};
+  if (e?.name === 'ConfigConflictError') return {status:409,code:'CONFIG_CONFLICT',message:publicMessages.CONFIG_CONFLICT};
+  const message = typeof e?.message === 'string' ? e.message : '';
+  if (e?.name === 'RecallError' && /^event (?:\S+ was explicitly deleted by archive GC|not found)/.test(message)) return {status:404,code:'NOT_FOUND',message:publicMessages.NOT_FOUND};
+  if ((error as {constructor?:unknown} | null)?.constructor !== Error || typeof e?.code === 'string') {
+    if (method && ['saveSettings','testProvider'].includes(method) && e?.code === 'ERR_INVALID_URL') return {status:400,code:'INVALID_SETTINGS',message:'Provider 地址无效。'};
+    return;
+  }
+  if (notFoundMessage.test(message)) return {status:404,code:'NOT_FOUND',message:publicMessages.NOT_FOUND};
+  if (validationMessage.test(message)) return {status:400,code:'INVALID_REQUEST',message};
+  if (/^Configuration (?:is changing|writer lock .* is held)/.test(message)) return {status:409,code:'CONFIG_BUSY',message:publicMessages.CONFIG_BUSY};
+  // Settings validation messages are static strings naming only fields the browser sent.
+  if (method === 'saveSettings' && message.length <= 240 && /^[\x20-\x7e]+$/.test(message) && !unsafeSettingsMessage.test(message)) return {status:400,code:'INVALID_SETTINGS',message};
+}
+const cursorKey = randomBytes(32); // per process: survives a settings-triggered service rebuild, never valid in another process
 /** Browser-facing DTOs. No archived inline refs, provider error bodies or config secrets cross this facade. */
 export class ManagementService {
-  private readonly cursorKey = randomBytes(32);
   constructor(readonly manager: ContextManager) {}
   private scopes(): Scope[] {
     return this.manager.db.queryAll<{agent:string;id:string;path:string;created_at:number}>('SELECT agent,id,path,created_at FROM workspaces ORDER BY agent,id')
@@ -26,7 +57,7 @@ export class ManagementService {
   }
   private scope(value:unknown): Scope {
     const id = text(value,'scopeId',100); const scope = this.scopes().find(s => s.id === id);
-    if (!scope) throw new Error('Scope unavailable'); return scope;
+    if (!scope) throw new ManagementError(404,'NOT_FOUND','Scope unavailable'); return scope;
   }
   resolveScope(scopeId:unknown):Scope { return this.scope(scopeId); }
   private memory(scope:Scope) { return new MemoryService(this.manager,{agent:scope.agent,workspaceId:scope.workspaceId}); }
@@ -39,22 +70,30 @@ export class ManagementService {
       safeToEvict:row.safe_to_evict,protectedUntilTurn:row.protected_until_turn,recalledCount:row.recalled_count,lastRecalledAt:row.last_recalled_at,
       provenance:provenanceFor(this.manager.db,row.id),coverage:indexCoverage(this.manager.db,row.id)};
   }
-  private cursor(payload:Row):string { const body = Buffer.from(JSON.stringify(payload)).toString('base64url'); return body+'.'+createHmac('sha256',this.cursorKey).update(body).digest('base64url'); }
+  private cursor(payload:Row):string { const body = Buffer.from(JSON.stringify(payload)).toString('base64url'); return body+'.'+createHmac('sha256',cursorKey).update(body).digest('base64url'); }
   private readCursor(value:unknown,binding:string):Row|undefined {
     if (value == null || value === '') return;
-    if (typeof value !== 'string' || value.length > 12000) throw new Error('Invalid cursor');
-    const [body,signature,...extra] = value.split('.'); const expected = createHmac('sha256',this.cursorKey).update(body).digest();
+    if (typeof value !== 'string' || value.length > 12000) throw new ManagementError(400,'INVALID_CURSOR','Invalid cursor');
+    const [body,signature,...extra] = value.split('.'); const expected = createHmac('sha256',cursorKey).update(body).digest();
     const actual = Buffer.from(signature ?? '', 'base64url');
-    if (extra.length || actual.toString('base64url') !== signature || actual.length !== expected.length || !timingSafeEqual(expected,actual)) throw new Error('Invalid cursor');
+    if (extra.length || actual.toString('base64url') !== signature || actual.length !== expected.length || !timingSafeEqual(expected,actual)) throw new ManagementError(400,'INVALID_CURSOR','Invalid cursor');
     const decoded = JSON.parse(Buffer.from(body,'base64url').toString('utf8')) as Row;
-    if (decoded.binding !== binding || !Number.isSafeInteger(decoded.time) || typeof decoded.id !== 'string' || decoded.expires < Date.now()) throw new Error('Expired or mismatched cursor');
+    if (decoded.binding !== binding || !Number.isSafeInteger(decoded.time) || typeof decoded.id !== 'string' || decoded.expires < Date.now()) throw new ManagementError(400,'INVALID_CURSOR','Expired or mismatched cursor');
     return decoded;
   }
   async execute(method:string,p:Record<string,unknown>):Promise<unknown> {
     if (method === 'scopes') return {scopes:this.scopes()};
     const storage = this.manager.config.storage.path;
     if (method === 'settings') return readSettings(storage);
-    if (method === 'saveSettings') return saveSettings(storage,text(p.expectedRevision,'expectedRevision',64),p.patch);
+    if (method === 'saveSettings') {
+      try { return await saveSettings(storage,text(p.expectedRevision,'expectedRevision',64),p.patch); }
+      catch (error) {
+        // The save is durable; report it as saved (the worker adopts it) with a static warning rather than a failure that invites a conflicting retry.
+        if (!(error instanceof ConfigLockLeftError)) throw error;
+        return {...publicSettings(error.config,storage,configRevision(storage)),saved:true,adopted:false,reloadRequired:true,
+          warning:{code:error.code,message:error.message}};
+      }
+    }
     if (method === 'testProvider') return this.testProvider(p);
     if (method === 'list' && p.kind === 'providers') {
       if (p.scopeId) this.scope(p.scopeId);
@@ -84,9 +123,10 @@ export class ManagementService {
       case 'download': {
         const row = this.event(scope,p.eventId); const field = this.field(p.field);
         const bytes = field === 'input' ? row.input_bytes : row.result_bytes;
-        if (bytes > 32*1024*1024) throw new Error('Download exceeds 32 MiB limit');
+        // fetchOriginal has no per-field read, so bound what it will materialize: the field itself and both fields together.
+        if (bytes > downloadLimit || row.input_bytes + row.result_bytes > 2*downloadLimit) throw new ManagementError(413,'SIZE_LIMIT','Download exceeds 32 MiB limit');
         const raw = await this.manager.archive.fetchOriginal(row.id);
-        if (Buffer.byteLength(raw[field]) > 32*1024*1024) throw new Error('Download exceeds 32 MiB limit');
+        if (Buffer.byteLength(raw[field]) > downloadLimit) throw new ManagementError(413,'SIZE_LIMIT','Download exceeds 32 MiB limit');
         return {text:raw[field],bytes,sha256:field === 'input' ? row.input_sha : row.result_sha,
           filename:row.id.replace(/[^a-zA-Z0-9_-]/g,'_')+'-'+field+'.txt'};
       }
@@ -144,7 +184,7 @@ export class ManagementService {
   }
   private chain(s:Scope,id:unknown) {
     const chain = this.manager.db.queryOne<Row>('SELECT id,session_id AS sessionId,status,capsule_id AS capsuleId,created_at AS createdAt,updated_at AS updatedAt FROM chains WHERE id=? AND agent=? AND workspace_id=?',[text(id,'chainId',200),s.agent,s.workspaceId]);
-    if (!chain) throw new Error('Chain unavailable in scope');
+    if (!chain) throw new ManagementError(404,'NOT_FOUND','Chain unavailable in scope');
     const members = this.manager.db.queryAll<Row>(`SELECT ${eventColumns} FROM chain_members m JOIN tool_events e ON e.id=m.event_id WHERE m.chain_id=? AND e.agent=? AND e.workspace_id=? AND e.session_id=? ORDER BY m.position LIMIT 100`,[chain.id,s.agent,s.workspaceId,chain.sessionId]);
     return {...chain,events:members.map(e=>this.eventDto(e)),eventsTruncated:members.length===100};
   }
@@ -158,14 +198,14 @@ export class ManagementService {
   private capsuleParams(s:Scope) { return Array.from({length:5},()=>[s.agent,s.workspaceId]).flat(); }
   private capsule(s:Scope,id:unknown) {
     const row = this.manager.db.queryOne<CapsuleRow>(`SELECT c.id,c.source_event_ids_json,c.summary,c.facts_json,c.anchors_json,c.outcome,c.frozen,c.created_at,c.updated_at FROM capsules c WHERE c.id=? AND ${this.capsuleCondition()}`,[text(id,'capsuleId',200),...this.capsuleParams(s)]);
-    if (!row) throw new Error('Capsule unavailable in scope');
+    if (!row) throw new ManagementError(404,'NOT_FOUND','Capsule unavailable in scope');
     return {id:row.id,sourceEventIds:JSON.parse(row.source_event_ids_json),summary:row.summary,facts:JSON.parse(row.facts_json),anchors:JSON.parse(row.anchors_json),outcome:row.outcome,frozen:Boolean(row.frozen),createdAt:row.created_at,updatedAt:row.updated_at,kind:'derived-summary'};
   }
   private list(s:Scope,p:Record<string,unknown>) {
     const kind = text(p.kind,'kind',20), limit = integer(p.limit ?? 50,'limit',1,p.query ? 50 : 100);
     const filters:Row = {};
     for (const key of ['query','sessionId','tool','status','state','pinned','completeness','role','provider']) if (p[key] !== undefined) filters[key] = p[key];
-    if (p.sessionId !== undefined && !this.manager.db.queryOne('SELECT id FROM sessions WHERE id=? AND agent=? AND workspace_id=?',[text(p.sessionId,'sessionId',200),s.agent,s.workspaceId])) throw new Error('Session unavailable in scope');
+    if (p.sessionId !== undefined && !this.manager.db.queryOne('SELECT id FROM sessions WHERE id=? AND agent=? AND workspace_id=?',[text(p.sessionId,'sessionId',200),s.agent,s.workspaceId])) throw new ManagementError(404,'NOT_FOUND','Session unavailable in scope');
     const binding = createHash('sha256').update(JSON.stringify({scope:s.id,kind,limit,filters})).digest('hex');
     const cursor = this.readCursor(p.cursor,binding);
     let sql:string, params:(string|number)[] = [s.agent,s.workspaceId], time='created_at',id='id';
@@ -216,7 +256,7 @@ export class ManagementService {
     const role=text(p.role,'role',20);if(!['retention','capsule','chain'].includes(role))throw new Error('Invalid provider role');
     const cfg=loadConfig(storage).providers[role as 'retention'|'capsule'|'chain'].find(c=>c.name===text(p.name,'name',200));
     if(p.expectedRevision!==configRevision(storage))throw new ConfigConflictError();
-    if(!cfg)throw new Error('Saved provider unavailable');
+    if(!cfg)throw new ManagementError(404,'NOT_FOUND','Saved provider unavailable');
     const started=Date.now();
     const end=this.manager.runtime.operation({kind:'provider',role:role as 'retention'|'capsule'|'chain',provider:cfg.name,model:cfg.model});
     try {

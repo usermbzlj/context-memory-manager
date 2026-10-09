@@ -63,6 +63,7 @@ Options:
   --out PATH                  Exact UTF-8 export; fails if the file exists
   --used-tokens N              Optional current usage for tidy
   --context-window N           Optional context window for tidy
+  --managed-by-cmm            Marker written into generated setup commands; no effect when typed by hand
   --dry-run --json --help --version
 
 Agent support is intentionally honest:
@@ -174,12 +175,25 @@ export async function main(argv=process.argv.slice(2)):Promise<void> {
     const {startDashboard}=await import('./dashboard/server.js');
     const dashboard=await startDashboard({storage,workspace,agent:flags.agent ?? 'codex',port:numeric(flags.port,0),open:flags.open});
     emit({dashboard:dashboard.url,launchUrl:dashboard.launchUrl,scope:'selected storage',listen:'loopback',note:'Open launchUrl once; keep it private. Ctrl+C stops the panel.'});
+    let workerStopped=false;
     await new Promise<void>(resolve=>{
       let closing=false;
-      const close=()=>{if(closing)return;closing=true;void dashboard.close().then(resolve,()=>{process.exitCode=1;resolve();});};
-      process.once('SIGINT',close);process.once('SIGTERM',close);
-      process.stdin.on('end',close);process.stdin.resume();
+      const release=()=>{
+        // A paused, unref'd stdin and no signal listeners let the loop drain, so a TTY session also exits by itself.
+        process.off('SIGINT',close);process.off('SIGTERM',close);process.stdin.off('end',close);process.stdin.off('error',close);
+        process.stdin.pause();(process.stdin as {unref?:()=>void}).unref?.();
+      };
+      const finish=(failed?:boolean)=>{if(failed)process.exitCode=1;release();resolve();};
+      // The first signal starts the graceful stop; a second one while waiting for the worker forces exit.
+      function close(){
+        if(closing){process.exit(130);return;}
+        closing=true;void dashboard.close().then(()=>finish(),()=>finish(true));
+      }
+      void dashboard.exited.then(()=>{if(!closing){closing=true;workerStopped=true;finish();}});
+      process.on('SIGINT',close);process.on('SIGTERM',close);
+      process.stdin.on('end',close);process.stdin.on('error',close);process.stdin.resume();
     });
+    if(workerStopped)throw new Error('dashboard worker stopped unexpectedly; restart the dashboard');
     return;
   }
   const commands=['hook','serve','proxy','bridge','capture','import-rtk','search','recall','pin','unpin','status','explain','verify','reindex','tidy','gc','doctor','sessions','events','chains','capsules','scores','recalls','providers','stats'];
