@@ -81,6 +81,20 @@ export interface ProviderCallRow {
   created_at: number;
 }
 
+const pause = new Int32Array(new SharedArrayBuffer(4));
+/** SQLite can return BUSY for a journal-mode switch without consulting busy_timeout, e.g. when
+ * several processes create the same database at once; retry synchronously within a bound. */
+function retryBusy<T>(fn: () => T, budgetMs: number): T {
+  const until = Date.now() + budgetMs;
+  for (let wait = 5; ; wait = Math.min(wait * 2, 100)) {
+    try { return fn(); } catch (error) {
+      const code = (error as { errcode?: unknown }).errcode;
+      if (typeof code !== 'number' || (code & 0xff) !== 5 || Date.now() >= until) throw error;
+      Atomics.wait(pause, 0, 0, wait);
+    }
+  }
+}
+
 export class Database {
   private readonly db: DatabaseSync;
   private transactionDepth = 0;
@@ -100,7 +114,7 @@ export class Database {
       db.exec('PRAGMA busy_timeout = 5000;');
       const version = (db.prepare('PRAGMA user_version').get() as {user_version: number}).user_version;
       if (version > SCHEMA_VERSION) throw new Error(`Database schema ${version} is newer than supported ${SCHEMA_VERSION}`);
-      db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;');
+      retryBusy(() => db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;'), 5000);
       db.exec(SCHEMA_SQL);
       runMigrations(db);
       return new Database(db);
