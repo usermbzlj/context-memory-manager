@@ -60,9 +60,29 @@
 - Opening a new database retries `SQLITE_BUSY` while switching to WAL, which SQLite can return
   without consulting `busy_timeout` when several processes create the same database at once.
 
+### Dashboard walkthrough fixes (2026-10-10)
+
+An agent-driven browser walkthrough on disposable synthetic storage (not user acceptance) found
+display defects, now fixed:
+
+- Evidence rows show the input summary, and search hits show a short text preview and the result
+  size (the UI read field names the API never sent).
+- Literal find highlights the match, reports its offset, can return to the start, and a miss
+  offers one click to clear the find.
+- Empty-state text no longer flashes while lists load or appears in unrelated drawer sections;
+  pin/unpin confirm the action; the panel waits for the first snapshot before claiming a connection.
+- Facts use Chinese labels, readable times, sizes and durations; `retentionDays`/`maxSizeBytes`
+  `null` read as "no deletion deadline"/"no size cap" instead of "unknown"; an empty integration
+  metadata panel was removed.
+- A settings validation error is prefixed in Chinese and cleared when the form is edited.
+- The copyable "redacted" diagnostics summary reports the workspace as a short `sha256:` digest
+  instead of the local path.
+- Tests: temporary-directory cleanup retries Windows `EBUSY`; `test:pack` allows npm up to 180 s
+  (a shared Windows runner exceeded 20 s); a NaN deadline is treated as unbounded rather than 1 ms.
+
 Schema/source version unchanged; local RC, not published. Validation is recorded in
-`docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite: 308 tests, 307 pass, 0 fail, 1 Windows
-file-symlink skip (Node 24.19.0); the same build also passes on Node 22.16.0. Remote CI run
+`docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite: 309 tests, 308 pass, 0 fail, 1 Windows
+file-symlink skip (Node 24.19.0); the same build also passes on Node 22.16.0 (307 pass, 2 skips). Remote CI run
 37968216772 passed on Ubuntu, Windows and macOS with Node 22.16.0, 22, 24 and 26.
 
 ## 0.3.0-rc.2 Windows hook and evidence repairs - 2026-10-08

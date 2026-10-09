@@ -4,7 +4,7 @@
 
 默认不需要模型 Key、账号或云服务；先保存实际观察到的结果，保留首次使用，历史压力出现后再生成可找回的精简视图。
 
-[English / 完整说明](README.md) | [平台接入](docs/INTEGRATIONS.md) | [验证记录](docs/RELEASE_VALIDATION.md) | [最新复审](docs/PROJECT_REVIEW.zh-CN.md) | [2026-10-05 完善报告（历史）](docs/IMPLEMENTATION_REPORT.zh-CN.md)
+[English / 完整说明](README.md) | [平台接入](docs/INTEGRATIONS.md) | [运维与配置（英文）](docs/OPERATIONS.md) | [验证记录](docs/RELEASE_VALIDATION.md) | [最新复审](docs/PROJECT_REVIEW.zh-CN.md) | [2026-10-05 完善报告（历史）](docs/IMPLEMENTATION_REPORT.zh-CN.md)
 
 ## 先运行离线演示
 
@@ -66,6 +66,6 @@ node .\dist\src\cli.js setup opencode --workspace "D:\MyProject"
 
 升级前停止 Agent，备份整个存储目录，包括数据库侧文件和 blobs。本版迁移到 schema v4，旧可执行程序不能再写入。使用 `verify` 校验、`reindex` 重建旧数据索引。旧投影标记不会被自动当成可信凭据。
 
-2026-10-10 Windows 全套结果：308 项：307 通过、0 失败、1 项 Windows 文件符号链接跳过（同一构建在 Node 22.16.0 上也通过），包含原版回归、真实旧结构迁移、字节损坏、面板 HTTP/worker 测试和实际 CLI 子进程；数字与边界见 [验证记录](docs/RELEASE_VALIDATION.md)。离线安装包与 PowerShell 5.1/7 的 `scripts/windows-smoke.ps1` 均实际执行生成的 Codex Hook，完成原文召回和哈希校验。旧 Windows 接入须重新运行 `setup codex`，再在 Codex 审阅并信任变更后的命令。已安装的 Kimi Code 2.1.1 在隔离目录中配合本地脚本化模型实测通过（Hook 归档、2,000 字符截断标 partial、MCP 找回、卸载还原）。已安装的 Codex 0.162.0-alpha.2 能读取本项目配置并发现 5 个 MCP 工具；捕获 hook 仍需用户信任，原生捕获闭环尚待验收。**真实模型下的 Kimi、Claude、Codex、OpenCode/Bun、RTK 实际二进制、真实任务质量/账单对照、原生/远程评分的真实模型质量，以及用户对面板的浏览器验收仍未完成。**
+2026-10-10 Windows 全套结果：309 项：308 通过、0 失败、1 项 Windows 文件符号链接跳过（同一构建在 Node 22.16.0 上 307 通过、2 项跳过）。远程 CI [37968216772](https://github.com/usermbzlj/context-memory-manager/actions/runs/37968216772) 在 Ubuntu/Windows/macOS × Node 22.16.0/22/24/26 共 12 个任务全部通过，此前的失败已修复，见验证记录；本地 RC，未发布到 npm，包含原版回归、真实旧结构迁移、字节损坏、面板 HTTP/worker 测试和实际 CLI 子进程；数字与边界见 [验证记录](docs/RELEASE_VALIDATION.md)。离线安装包与 PowerShell 5.1/7 的 `scripts/windows-smoke.ps1` 均实际执行生成的 Codex Hook，完成原文召回和哈希校验。旧 Windows 接入须重新运行 `setup codex`，再在 Codex 审阅并信任变更后的命令。已安装的 Kimi Code 2.1.1 在隔离目录中配合本地脚本化模型实测通过（Hook 归档、2,000 字符截断标 partial、MCP 找回、卸载还原）。已安装的 Codex 0.162.0-alpha.2 能读取本项目配置并发现 5 个 MCP 工具；捕获 hook 仍需用户信任，原生捕获闭环尚待验收。**真实模型下的 Kimi、Claude、Codex、OpenCode/Bun、RTK 实际二进制、真实任务质量/账单对照、原生/远程评分的真实模型质量，以及用户对面板的浏览器验收仍未完成。**
 
 归档是本地明文，可能含源码和密钥，不要提交到 GitHub。默认不自动删除原文。演示的 **95.51%** 只是合成日志的字符缩减，不是任务费用或质量证明。

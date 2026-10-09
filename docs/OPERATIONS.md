@@ -76,7 +76,8 @@ Balanced is the default strategy. With no provider configured, deterministic fal
 functional and never fully evicts an event. Optional `providers.retention`, `providers.capsule`
 and `providers.chain` arrays use user-defined order. A provider entry has `kind`, `name`,
 `model`, optional `baseUrl`, and preferably `apiKeyEnv`. Supported kinds are `openai-compatible`,
-`anthropic`, `gemini`, retention-only `systemone`, and the test-only `fake`.
+`anthropic`, `gemini`, retention-only `systemone`, and the test-only `fake`; each list holds at most 8 entries.
+`retention.scorer` is `jev` (default), `systemone` or `conservative`.
 CMM does not subscribe to or resell a model.
 
 OpenAI-compatible entries may set `reasoningEffort` to `none`, `low`, `medium`, `high`,
@@ -106,7 +107,7 @@ For a local Clef-flash native decision server, set both sections together in `co
 
 Merge these fields into the existing configuration, retaining its other settings. Start the
 model server, then restart persistent CMM bridges. `systemone` posts `state` and `questions`
-to `/v1/systemone` and maps each native `noul` probability to `safeToEvict`; it does not
+to `<baseUrl>/systemone` (`/v1/systemone` in the example above) and maps each native `noul` probability to `safeToEvict`; it does not
 request chat text or supply capsule/chain summaries. Descriptors and current-task hints,
 not complete archived outputs, form the scoring state. Up to eight events share a call;
 larger history batches keep every event and use bounded groups. A 2,600-token input estimate
@@ -125,8 +126,8 @@ exact archives are untouched.
 Error messages contain fixed text only (no bodies, URLs or keys). Fetch-based providers still
 honor Node's proxy settings; native `systemone` connects directly.
 
-A local OpenAI-compatible loopback endpoint can omit authentication. Remote endpoints require
-an API key. Invalid provider JSON triggers the next configured provider. Invalid custom scores
+An `openai-compatible` or `systemone` endpoint whose host is exactly `localhost`, `127.0.0.1` or
+`[::1]` can omit authentication; Anthropic and Gemini always require a key, as do remote endpoints. Invalid provider JSON triggers the next configured provider. Invalid custom scores
 fall back conservatively. Dated validation records distinguish offline/local checks from the
 2026-10-09 DeepSeek capsule/chain smoke using synthetic data.
 Provider token counts are recorded when reported; legacy numerical `cost_usd` fields are now

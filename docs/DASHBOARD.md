@@ -10,13 +10,14 @@ node .\dist\src\cli.js dashboard --storage "C:\path\to\cmm-storage" --port 18181
 In a source checkout, `scripts/start-dashboard.ps1 -Storage <dir> [-Port n] [-Open]` is a
 convenience wrapper around the same command; it requires a prior build and is not packaged.
 
-Omit `--port` to select an available port. `--agent` defaults to `codex` but only selects the
-initial scope; the UI can switch to any scope present in the storage. The printed `launchUrl`
-has a one-use fragment token; the UI removes it after login and uses an HttpOnly SameSite cookie
-named `cmm_session_<port>` plus CSRF protection, so dashboards on different ports can be logged in
-at the same time. Only exact loopback Host/Origin values are allowed. Credentials never appear in
-configuration read DTOs. To reopen after the cookie expires, restart the dashboard for a fresh
-launch link.
+Omit `--port` to select an available port. `--agent` defaults to `codex` and `--workspace` to the
+current directory, but they only select the initial scope; the UI can switch to any scope present
+in the storage. The printed `launchUrl` has a one-use fragment token; the UI removes it after login
+and uses a cookie named `cmm_session_<port>` (HttpOnly, SameSite=Strict, `Path=/api`, valid 8 hours)
+plus CSRF protection, so dashboards on different ports can be logged in at the same time. Only the
+exact printed `127.0.0.1:<port>` Host/Origin is accepted; `localhost` is refused. Credentials never
+appear in configuration read DTOs. To reopen after the cookie expires, restart the dashboard for a
+fresh launch link.
 
 Ctrl+C or input EOF stops the HTTP service and waits for the SQLite worker to close (5 s grace
 before it is terminated). A second Ctrl+C forces exit with code 130. If the worker stops
@@ -35,7 +36,8 @@ dashboard` and exits with code 1.
   editable environment references, role ordering and explicitly triggered synthetic model tests.
 - Strategies/integrations: global stored configuration, known capability boundaries and revision
   conflicts. Saving adopts the settings in the panel worker; other persistent hosts need reload.
-- Diagnostics: sanitized environment summary, explicit scope integrity checks and search reindex.
+- Diagnostics: sanitized environment summary (the workspace appears only as a short `sha256:`
+  digest), explicit scope integrity checks and search reindex.
   Maintenance has progress and cooperative cancellation; it never retries automatically after
   timeout/restart. Cancellation cannot undo already completed reindex batches. The page polls
   only while a maintenance job is running.
@@ -67,12 +69,16 @@ Downloads are fetched in-page and errors appear inline. One original field may b
 through paged recall, and the button is disabled with an explanation over the limit. Content
 downloads preserve exact UTF-8 bytes including BOM/CRLF/NUL.
 
-API errors carry specific codes: `CONFIG_CONFLICT`, `CONFIG_BUSY` and `MAINTENANCE_RUNNING` (409),
-`NOT_FOUND` (404; unknown scope, session, chain, capsule or provider), `SIZE_LIMIT` (413), and
-`INVALID_REQUEST`, `INVALID_CURSOR`, `INVALID_SETTINGS` (400). Other failures return a generic
-`OPERATION_FAILED` without internal detail. An oversized request body is 413 and a non-JSON POST
-is 415. Pagination cursors survive a settings save (per-process key) but are invalid again after a
-dashboard restart.
+API errors carry specific codes: `CONFIG_CONFLICT`, `CONFIG_BUSY`, `MAINTENANCE_RUNNING` and
+`JOB_RUNNING` (409), `NOT_FOUND` (404; unknown scope, session, chain, capsule or provider),
+`SIZE_LIMIT` (413), and `INVALID_REQUEST`, `INVALID_CURSOR`, `INVALID_SETTINGS`, `INVALID_JSON`,
+`INVALID_COMMAND` (400). Authentication and origin failures are 401/403 (`AUTH_REQUIRED`,
+`HOST_REJECTED`, `ORIGIN_REJECTED`, `ORIGIN_REQUIRED`, `CROSS_SITE`, `CSRF_REQUIRED`). A request
+body over 128 KiB is 413 `BODY_LIMIT`, a non-JSON POST is 415 `JSON_REQUIRED`, a full operation
+queue (16) is 429 `QUEUE_LIMIT`, a stalled worker call is 504 `TIMEOUT` (never retried) and a
+stopped worker is 503 `WORKER_STOPPED`. Any other failure returns `OPERATION_FAILED` without
+internal detail. Pagination cursors expire after one hour; they survive a settings save
+(per-process key) but are invalid again after a dashboard restart.
 
 ## Observation and limits
 

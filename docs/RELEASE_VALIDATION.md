@@ -12,9 +12,10 @@ local loopback servers only; no private archive, paid model, host trust change o
 | Executed check | Actual result |
 | --- | --- |
 | Starting snapshot (2026-10-09 source) | `npm test`: 229 tests, 227 pass, **1 fail**, 1 skip. Failure: cross-process configuration writers, `EPERM` creating `config.write.lock` |
-| Final clean source suite | `npm test`: **308 tests, 18 suites; 307 pass, 0 fail, 1 Windows file-symlink skip**, exit 0 |
-| Same build on Node 22.16.0 | `node --test dist/tests/*.test.js` on Windows: 308 tests, 306 pass, 0 fail, 2 skips (Windows file symlink; this Node build ignores `NODE_USE_ENV_PROXY`) |
-| Remote CI | [Run 37968216772](https://github.com/usermbzlj/context-memory-manager/actions/runs/37968216772) on commit `39b36e6`: all 12 jobs pass (Ubuntu, Windows, macOS × Node 22.16.0, 22, 24, 26), including `npm test` and `npm run test:pack` |
+| Final clean source suite | `npm test`: **309 tests, 18 suites; 308 pass, 0 fail, 1 Windows file-symlink skip**, exit 0 |
+| Same build on Node 22.16.0 | `node --test dist/tests/*.test.js` on Windows: 309 tests, 307 pass, 0 fail, 2 skips (Windows file symlink; this Node build ignores `NODE_USE_ENV_PROXY`) |
+| Repeat runs | Before the dashboard fixes: full suite 5 times on Node 24 and 3 times on Node 22.16.0. One Node 22.16.0 round hit `EBUSY` removing a test's temporary directory on Windows; test cleanup now retries removal |
+| Remote CI | [Run 37968216772](https://github.com/usermbzlj/context-memory-manager/actions/runs/37968216772) on commit `39b36e6`: all 12 jobs pass (Ubuntu, Windows, macOS × Node 22.16.0, 22, 24, 26), including `npm test` and `npm run test:pack`. [Run 37968763110](https://github.com/usermbzlj/context-memory-manager/actions/runs/37968763110) on `ccb6c58` passed twice; a third attempt failed only because `npm install` of the tarball exceeded the package check's 20 s child timeout on Windows Node 22 (npm steps now get 180 s) |
 | Configuration writers | Cross-process concurrency and lock-recovery files repeated 10 times: 10/10 pass. Dead same-host holder recovered; live, foreign-host, unreadable and older-format locks refused with bytes unchanged; release never removes a lock it does not own |
 | Offline distributable | `npm run test:pack`: actual tarball installs offline; dashboard assets/auth and exact download, generated hook capture and fail-open, setup/uninstall, MCP handshake and demo pass |
 | Windows smoke | `scripts/windows-smoke.ps1` passes under PowerShell 5.1 and 7 with the default 936 console code page; liveAgentTested=false |
@@ -45,9 +46,18 @@ failed; the failures were real and are fixed:
 Logs: `windows-2026-10-10-baseline-tests.txt`, `windows-2026-10-10-tests.txt`,
 `windows-2026-10-10-tests-node22.16.txt`, `windows-2026-10-10-package.txt`,
 `windows-2026-10-10-smoke-ps5.txt` and `windows-2026-10-10-smoke-ps7.txt` under `docs/validation`
-(local paths replaced by placeholders). One green CI run is not a flakiness guarantee. The dashboard
-was not exercised in a browser in this round. Codex native capture after hook re-trust, real-model
-hosts and task-quality/token/cost gates remain open.
+(local paths replaced by placeholders). One green CI run is not a flakiness guarantee.
+
+An agent-driven browser walkthrough (not user acceptance) covered every dashboard page and the
+original-text drawer against disposable synthetic storage, deleted afterwards. It found that search
+results never showed the input summary, matched preview or byte size because the page read field
+names the API does not return; event rows now carry the summary, and previews are shown with the
+matched terms marked. Also fixed: shareable diagnostics included the full workspace path (now a
+short digest), raw enum/epoch/byte values, bare settings-validation error codes, empty-state text shown
+before data loaded, stale errors after edits, no feedback for find/pin, and `--agent` help that did
+not mention the dashboard default (`codex`). Each fix was rechecked in the browser. Codex native
+capture after hook re-trust, real-model hosts, the user's own browser acceptance and
+task-quality/token/cost gates remain open.
 
 ## Windows local dashboard: 2026-10-09
 
