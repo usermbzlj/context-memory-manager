@@ -182,3 +182,14 @@ test('a save whose writer lock cannot be removed is reported as saved with a sta
   await service.execute('saveSettings',{expectedRevision:result.revision,patch:{strategy:'aggressive'}});
   assert.equal(loadConfig(dir).strategy,'aggressive');
 });
+
+test('event rows carry the input summary shown by search, and the shareable diagnostics omit the workspace path',async t=>{
+  const {dir,service,scopeId}=await fixture(t);
+  const list=await service.execute('list',{scopeId,kind:'events'}) as any;
+  assert.equal(typeof list.items[0].summary,'string');assert.ok(list.items[0].summary.length>0);
+  const found=await service.execute('list',{scopeId,kind:'events',query:'hello'}) as any;
+  assert.equal(found.items[0].summary,list.items[0].summary);
+  const diagnostics=JSON.stringify(await service.execute('diagnostics',{scopeId}));
+  for(const form of [dir,dir.replace(/\\/g,'/'),JSON.stringify(dir).slice(1,-1),path.basename(dir)])assert.equal(diagnostics.includes(form),false,form);
+  assert.match(diagnostics,/"workspace":"sha256:[0-9a-f]{16}"/);
+});

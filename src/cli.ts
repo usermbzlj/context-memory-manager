@@ -49,7 +49,7 @@ Agent processes (stdout is protocol-only):
 Diagnostics: sessions | events | chains | capsules | scores | recalls | providers | stats
 
 Options:
-  --agent NAME                Default: cli. Use the same agent as capture.
+  --agent NAME                Default: cli (dashboard: codex). Use the same agent as capture.
   --workspace PATH            Default: current directory
   --storage PATH              Default: CMM_STORAGE or ~/.context-memory-manager
   --port N --open              Dashboard port (0 chooses a free port), open browser

@@ -15,7 +15,7 @@ import type { CapsuleRow, ToolEventRow } from '../types.js';
 
 interface Scope {id:string;agent:string;workspaceId:string;path:string;createdAt:number}
 type Row = Record<string, any>;
-const eventColumns = 'e.id,e.agent,e.workspace_id,e.session_id,e.tool_call_id,e.tool_name,e.status,e.turn,e.created_at,e.archived_at,e.input_sha,e.input_bytes,e.result_sha,e.result_bytes,e.chain_id,e.capsule_id,e.pinned,e.persistent_pin,e.state,e.safe_to_evict,e.protected_until_turn,e.recalled_count,e.last_recalled_at';
+const eventColumns = 'e.id,e.agent,e.workspace_id,e.session_id,e.tool_call_id,e.tool_name,e.status,e.turn,e.created_at,e.archived_at,e.input_sha,e.input_bytes,e.result_sha,e.result_bytes,e.chain_id,e.capsule_id,e.pinned,e.persistent_pin,e.state,e.safe_to_evict,e.protected_until_turn,e.recalled_count,e.last_recalled_at,e.descriptor_json';
 /** Known, safe failure kinds. Everything else reaches the browser as a generic failure. */
 export class ManagementError extends Error {
   constructor(readonly status:number,readonly code:string,message:string) { super(message); this.name='ManagementError'; }
@@ -47,6 +47,10 @@ export function publicFailure(error:unknown,method?:string):{status:number;code:
   // Settings validation messages are static strings naming only fields the browser sent.
   if (method === 'saveSettings' && message.length <= 240 && /^[\x20-\x7e]+$/.test(message) && !unsafeSettingsMessage.test(message)) return {status:400,code:'INVALID_SETTINGS',message};
 }
+function inputSummary(json: unknown): string | undefined {
+  if (typeof json !== 'string') return undefined;
+  try { const v = (JSON.parse(json) as {inputSummary?: unknown}).inputSummary; return typeof v === 'string' ? v.slice(0,300) : undefined; } catch { return undefined; }
+}
 const cursorKey = randomBytes(32); // per process: survives a settings-triggered service rebuild, never valid in another process
 /** Browser-facing DTOs. No archived inline refs, provider error bodies or config secrets cross this facade. */
 export class ManagementService {
@@ -65,6 +69,7 @@ export class ManagementService {
   private eventDto(row: Row) {
     return {id:row.id,eventId:row.id,agent:row.agent,workspaceId:row.workspace_id,sessionId:row.session_id,sourceSession:row.session_id,
       toolCallId:row.tool_call_id,tool:row.tool_name,status:row.status,turn:row.turn,createdAt:row.created_at,archivedAt:row.archived_at,
+      summary:inputSummary(row.descriptor_json),
       input:{sha256:row.input_sha,bytes:row.input_bytes},result:{sha256:row.result_sha,bytes:row.result_bytes},bytes:row.result_bytes,
       chainId:row.chain_id,capsuleId:row.capsule_id,pinned:Boolean(row.pinned),persistentPin:Boolean(row.persistent_pin),state:row.state,
       safeToEvict:row.safe_to_evict,protectedUntilTurn:row.protected_until_turn,recalledCount:row.recalled_count,lastRecalledAt:row.last_recalled_at,
@@ -147,7 +152,9 @@ export class ManagementService {
   private diagnostics(s:Scope) {
     const files:Record<string,string[]>={codex:['.codex/config.toml','.codex/hooks.json'],kimi:['.kimi-code/mcp.json'],opencode:['.opencode/plugins/context-memory-manager.ts'],claude:['.claude/settings.local.json','.mcp.json']};
     const artifacts=(files[s.agent]??[]).map(relative=>({relativePath:relative,present:fs.existsSync(path.join(s.path,relative)),contentMatch:'not-checked'}));
-    return {scope:s,storage:{schemaVersion:4},environment:{nodeVersion:process.version,platform:process.platform},health:this.health(s),
+    // Shared as a redacted summary: the workspace path is reduced to a short digest.
+    const scope={id:s.id,agent:s.agent,workspace:'sha256:'+createHash('sha256').update(s.workspaceId).digest('hex').slice(0,16)};
+    return {scope,storage:{schemaVersion:4},environment:{nodeVersion:process.version,platform:process.platform},health:this.health(s),
       capabilities:{nativeCaptureOnly:['codex','kimi'].includes(s.agent),historyProjection:s.agent==='opencode',liveHostValidated:'unknown'},
       installation:{scope:'workspace',artifacts,hostTrust:'unknown',mcpDiscovery:'unknown',note:'File presence alone does not confirm matching installation, host approval or live capture.'},
       indexCoverage:this.coverage(s),providerCallsScope:'storage-global',cost:'unpriced',configRevision:configRevision(this.manager.config.storage.path)};

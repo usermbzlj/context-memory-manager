@@ -24,7 +24,9 @@ export async function authenticate(): Promise<ScopePreference | undefined> {
 export async function command<T = Data>(method: string, params: Data = {}): Promise<T> {
   return decode(await fetch('/api/command', {method:'POST', credentials:'same-origin', cache:'no-store', headers:{'Content-Type':'application/json','X-CMM-CSRF':csrfToken}, body:JSON.stringify({method,params})}));
 }
-export const errorText = (error: unknown) => error instanceof ApiError ? `${error.message} (${error.code})` : error instanceof Error ? error.message : '发生未知错误';
+// Settings validation detail comes from the configuration validator, which reports in English.
+const prefixes: Record<string, string> = {INVALID_SETTINGS: '设置未保存，校验未通过：', INVALID_REQUEST: '请求无效：'};
+export const errorText = (error: unknown) => error instanceof ApiError ? `${prefixes[error.code] ?? ''}${error.message} (${error.code})` : error instanceof Error ? error.message : '发生未知错误';
 /** Server-side cap; a larger known size is explained in the UI instead of attempting the request. */
 export const DOWNLOAD_LIMIT = 32 * 1024 * 1024;
 const hex = (buffer: ArrayBuffer) => [...new Uint8Array(buffer)].map(b => b.toString(16).padStart(2, '0')).join('');
