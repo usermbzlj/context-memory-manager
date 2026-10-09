@@ -57,10 +57,14 @@ export async function saveSettings(storage: string, expectedRevision: string, va
           if (entry.newKey !== undefined && action !== 'replace') throw new Error('New key requires replace action');
           const p = Object.fromEntries(Object.entries(entry).filter(([k]) => k !== 'keyAction' && k !== 'newKey')) as unknown as ProviderConfig;
           if (p.baseUrl) { const u = new URL(p.baseUrl); if (u.username || u.password || u.search || u.hash) throw new Error('Provider URLs cannot contain credentials, query or fragment'); }
-          const unchangedMetadata=old && ['kind','name','model','reasoningEffort','apiKeyEnv'].every(k =>
-            entry[k] === (old as unknown as Record<string,unknown>)[k]) && p.baseUrl===displayUrl(old.baseUrl);
-          if (unchangedMetadata) p.baseUrl=old.baseUrl;
-          if (action === 'keep' && old?.apiKey !== undefined) p.apiKey = old.apiKey;
+          // The DTO hides the stored query/fragment/userinfo, so an edit that keeps origin and path keeps them, whatever else changed.
+          if (old?.baseUrl && p.baseUrl && new URL(p.baseUrl).toString() === displayUrl(old.baseUrl)) p.baseUrl = old.baseUrl;
+          if (action === 'keep' && old?.apiKey !== undefined) {
+            const origin = (url?: string) => url ? new URL(url).origin : '';
+            if (origin(p.baseUrl) !== origin(old.baseUrl))
+              throw new Error(`Provider ${entry.name}: the base URL origin changed, so the stored API key cannot be kept. Re-enter the key (replace) or delete it.`);
+            p.apiKey = old.apiKey;
+          }
           if (action === 'replace') {
             if (typeof entry.newKey !== 'string' || !entry.newKey.trim() || entry.newKey.trim() === '[REDACTED]' || entry.newKey.length > 8192) throw new Error('Invalid replacement key');
             p.apiKey = entry.newKey;

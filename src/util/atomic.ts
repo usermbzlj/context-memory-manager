@@ -12,6 +12,19 @@ export function atomicCreate(file: string, data: string | Buffer, mode = 0o600):
   return publish(file, data, mode, false);
 }
 
+const sleeper = new Int32Array(new SharedArrayBuffer(4));
+/** Windows refuses to replace a file another process briefly holds open (scanner, indexer, reader). */
+function renameRetry(from: string, to: string): void {
+  const deadline = Date.now() + 1000;
+  for (let wait = 5; ; wait = Math.min(wait * 2, 100)) {
+    try { renameSync(from, to); return; }
+    catch (error) {
+      if (!['EPERM', 'EBUSY', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '') || Date.now() >= deadline) throw error;
+      Atomics.wait(sleeper, 0, 0, wait);
+    }
+  }
+}
+
 function publish(file: string, data: string | Buffer, mode: number, replace: boolean): boolean {
   mkdirSync(dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.${randomUUID()}.tmp`;
@@ -22,7 +35,7 @@ function publish(file: string, data: string | Buffer, mode: number, replace: boo
     fsyncSync(fd);
     closeSync(fd);
     fd = undefined;
-    if (replace) renameSync(tmp, file);
+    if (replace) renameRetry(tmp, file);
     else {
       // Both paths are on the same volume. A hard link publishes the complete,
       // fsynced inode atomically and refuses to overwrite an existing config.

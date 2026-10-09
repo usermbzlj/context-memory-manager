@@ -46,7 +46,22 @@ function configObject(value: unknown, label: string, required: readonly string[]
   for (const key of required) if (!Object.hasOwn(fields, key)) throw new Error(`missing config key: ${label}.${key}`);
   return fields;
 }
-export function validateConfig(cfg: Config): Config {
+export function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '[::1]' || /^127(\.\d{1,3}){3}$/.test(hostname);
+}
+/** True when a credential would travel over plain http to a non-loopback host. */
+export function cleartextRemote(baseUrl: string): boolean {
+  const url = new URL(baseUrl);
+  return url.protocol === 'http:' && !isLoopbackHost(url.hostname);
+}
+const SAME_ENTRY = ['kind', 'model', 'baseUrl', 'apiKey', 'apiKeyEnv', 'reasoningEffort'] as const;
+/**
+ * `previous` adds checks that new settings must satisfy: `null` checks every provider entry (a brand-new file),
+ * a Config checks only entries that are new or changed against it (by purpose + name), so a legacy entry never
+ * blocks an unrelated save. Loading (undefined) stays permissive so an older file never stops hooks from
+ * capturing; providers refuse those requests instead.
+ */
+export function validateConfig(cfg: Config, previous?: Config | null): Config {
   configObject(cfg, 'config', ['strategy', 'strategies', 'retention', 'storage', 'providers', 'models', 'logging', 'integration']);
   const strategies = configObject(cfg.strategies, 'strategies', Object.keys(STRATEGIES));
   configObject(cfg.retention, 'retention', ['scorer']);
@@ -93,6 +108,9 @@ export function validateConfig(cfg: Config): Config {
       if (entry.baseUrl) {
         const url = new URL(entry.baseUrl);
         if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('provider baseUrl must be HTTP(S), without embedded credentials');
+        const old = previous?.providers?.[purpose]?.find(p => p.name === entry.name);
+        if (previous !== undefined && !(old && SAME_ENTRY.every(k => old[k] === entry[k])) && cleartextRemote(entry.baseUrl) && (entry.apiKey || entry.apiKeyEnv))
+          throw new Error(`provider ${entry.name}: a credential requires an https baseUrl (plain http is only allowed for localhost, 127.0.0.0/8 or [::1])`);
       }
     });
   }
@@ -115,7 +133,7 @@ export function loadConfig(storagePath?: string, overrides?: Record<string, unkn
   const file = path.join(base.storage.path, 'config.json');
   let disk: Record<string, unknown> = {};
   if (fs.existsSync(file)) {
-    try { disk = object(JSON.parse(fs.readFileSync(file, 'utf8')), 'config'); }
+    try { disk = object(JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')), 'config'); }
     catch (error) { throw new Error(`Cannot read ${file}; configuration was not reset. ${errorMessage(error)}`); }
   }
   const merged = merge(merge(base as unknown as Record<string, unknown>, disk), overrides ?? {}) as unknown as Config;
@@ -138,44 +156,121 @@ export class ConfigConflictError extends Error {
   readonly status = 409;
   constructor() { super('Configuration changed; reload settings before saving.'); this.name = 'ConfigConflictError'; }
 }
-/** All interactive writers use this lock and reread. Crashed locks fail closed rather than risking an overlapping writer. */
+/** The save is durable but the writer lock stayed behind; the message is static so it is safe to show in a browser. */
+export class ConfigLockLeftError extends Error {
+  readonly code = 'CONFIG_LOCK_LEFT';
+  constructor(readonly config: Config) {
+    super('Settings were saved, but the configuration writer lock could not be removed. Close other CMM processes, then delete config.write.lock in the storage folder.');
+    this.name = 'ConfigLockLeftError';
+  }
+}
+// Windows reports a lock that is delete-pending or briefly scanned as EPERM/EBUSY/EACCES, not EEXIST.
+const BUSY = new Set(['EEXIST', 'EPERM', 'EBUSY', 'EACCES']);
+const codeOf = (error: unknown) => (error as NodeJS.ErrnoException).code ?? '';
+function readLock(lock: string): string | null { try { return fs.readFileSync(lock, 'utf8'); } catch { return null; } }
+/** True only when the recorded holder is provably a dead process on this host; everything else is treated as possibly live. */
+function deadHolder(content: string | null): boolean {
+  if (!content) return false;
+  try {
+    const holder = JSON.parse(content) as { pid?: unknown; hostname?: unknown };
+    if (!Number.isInteger(holder.pid) || (holder.pid as number) <= 0 || holder.hostname !== os.hostname()) return false;
+    try { process.kill(holder.pid as number, 0); return false; }
+    catch (error) { return codeOf(error) === 'ESRCH'; }
+  } catch { return false; }
+}
+const GUARD_STALE_MS = 10_000;
+/**
+ * Reclaims serialize on a guard held for microseconds, so the lock cannot be replaced between the re-read and the
+ * unlink: a live writer's lock never carries `seen`. An abandoned guard is removed once old; the next attempt retries.
+ */
+function removeStaleLock(lock: string, seen: string): void {
+  const guard = `${lock}.reclaim`;
+  let fd: number;
+  try { fd = fs.openSync(guard, 'wx', 0o600); }
+  catch (error) {
+    if (BUSY.has(codeOf(error))) { try { if (Date.now() - fs.statSync(guard).mtimeMs > GUARD_STALE_MS) fs.unlinkSync(guard); } catch { /* gone or busy */ } }
+    return;
+  }
+  try { if (readLock(lock) === seen && deadHolder(seen)) fs.unlinkSync(lock); }
+  catch { /* retried by the next writer */ }
+  finally {
+    try { fs.closeSync(fd); } catch { /* best effort */ }
+    try { fs.unlinkSync(guard); } catch { /* aged out by the next reclaimer */ }
+  }
+}
+/** Only the lock this process wrote is removed; one now owned by another writer is left alone. `partial` covers a failed write of our own content. */
+async function releaseLock(fd: number, lock: string, owned: string, partial: boolean): Promise<void> {
+  try { fs.closeSync(fd); } catch { /* unlink below is what matters */ }
+  const deadline = Date.now() + 2000;
+  for (let wait = 5; ; wait = Math.min(wait * 2, 100)) {
+    try {
+      const now = fs.readFileSync(lock, 'utf8');
+      if (now === owned || (partial && owned.startsWith(now))) fs.unlinkSync(lock);
+      return;
+    }
+    catch (error) {
+      if (codeOf(error) === 'ENOENT') return;
+      if (!BUSY.has(codeOf(error)) || Date.now() >= deadline) throw error;
+      await delay(wait);
+    }
+  }
+}
+/** All interactive writers use this lock and reread. A lock is only removed automatically when its recorded holder is a dead process on this host. */
 export async function updateConfig(storage: string,
-  patch: Record<string, unknown> | ((current: Config) => Record<string, unknown>), expectedRevision?: string): Promise<Config> {
+  patch: Record<string, unknown> | ((current: Config) => Record<string, unknown>), expectedRevision?: string, timeoutMs = 10000): Promise<Config> {
   const root = path.resolve(storage);
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
   const lock = path.join(root, 'config.write.lock');
-  const deadline = Date.now() + 10000;
+  const deadline = Date.now() + timeoutMs;
   let fd: number;
-  for (;;) {
+  for (let wait = 5;;) {
     try { fd = fs.openSync(lock, 'wx', 0o600); break; }
     catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-      if (Date.now() >= deadline) throw new Error('Configuration writer lock unavailable; no settings were changed.');
-      await delay(20);
+      if (!BUSY.has(codeOf(error))) throw error;
+      const seen = readLock(lock);
+      if (seen !== null && deadHolder(seen)) removeStaleLock(lock, seen);
+      if (Date.now() >= deadline) {
+        if (codeOf(error) !== 'EEXIST' && seen === null) throw error;
+        throw new Error(`Configuration writer lock ${lock} is held${seen ? ` (${seen.trim().slice(0, 200)})` : ''}; no settings were changed. ` +
+          'Delete that file only if no Context Memory Manager process is running.');
+      }
+      await delay(wait); wait = Math.min(wait * 2, 40);
     }
   }
+  let failure: unknown, result: Config | undefined, failed = false, written = false;
+  const owned = JSON.stringify({ pid: process.pid, hostname: os.hostname(), createdAt: new Date().toISOString() });
   try {
-    fs.writeFileSync(fd, String(process.pid));
+    fs.writeFileSync(fd, owned); written = true;
+    const file = path.join(root, 'config.json');
     if (expectedRevision !== undefined && expectedRevision !== configRevision(root)) throw new ConfigConflictError();
-    // Establish an atomic initial winner before the read-modify-write, so a
-    // concurrent ContextManager opener cannot publish defaults after our read.
-    if (!fs.existsSync(path.join(root, 'config.json'))) createConfigIfAbsent(defaultConfig(root));
-    const current = loadConfig(root);
-    const change = typeof patch === 'function' ? patch(structuredClone(current)) : patch;
-    if (change.storage && Object.hasOwn(object(change.storage, 'storage'), 'path') &&
-        (typeof patch !== 'function' || object(change.storage, 'storage').path !== current.storage.path)) throw new Error('storage.path cannot be changed');
-    const fields = object(change, 'patch');
-    // CLI callbacks may return a complete edited config. Preserve replacement
-    // validation in that case; merging would silently repair missing fields.
-    const completeReplacement = typeof patch === 'function' && Object.keys(current).every(key => Object.hasOwn(fields,key));
-    const next = validateConfig((completeReplacement ? fields : merge(current as unknown as Record<string, unknown>, fields)) as unknown as Config);
-    saveConfig(next);
-    return next;
-  } finally { fs.closeSync(fd); fs.unlinkSync(lock); }
+    const compute = () => {
+      const current = loadConfig(root);
+      const change = typeof patch === 'function' ? patch(structuredClone(current)) : patch;
+      if (change.storage && Object.hasOwn(object(change.storage, 'storage'), 'path') &&
+          (typeof patch !== 'function' || object(change.storage, 'storage').path !== current.storage.path)) throw new Error('storage.path cannot be changed');
+      const fields = object(change, 'patch');
+      // CLI callbacks may return a complete edited config. Preserve replacement
+      // validation in that case; merging would silently repair missing fields.
+      const completeReplacement = typeof patch === 'function' && Object.keys(current).every(key => Object.hasOwn(fields,key));
+      return validateConfig((completeReplacement ? fields : merge(current as unknown as Record<string, unknown>, fields)) as unknown as Config, current);
+    };
+    if (!fs.existsSync(file)) {
+      compute(); // an invalid patch must not leave a defaults file behind
+      // Establish an atomic initial winner before the read-modify-write, so a
+      // concurrent ContextManager opener cannot publish defaults after our read.
+      createConfigIfAbsent(defaultConfig(root));
+    }
+    result = compute();
+    saveConfig(result);
+  } catch (error) { failed = true; failure = error; }
+  try { await releaseLock(fd, lock, owned, !written); }
+  catch { if (!failed) throw new ConfigLockLeftError(result!); }
+  if (failed) throw failure;
+  return result!;
 }
 /** Initial creation never replaces settings published by another opener. */
 export function createConfigIfAbsent(cfg: Config): boolean {
-  validateConfig(cfg);
+  validateConfig(cfg, null);
   return atomicCreate(path.join(cfg.storage.path, 'config.json'), JSON.stringify(cfg, null, 2) + '\n');
 }
 export function activePreset(cfg: Config): StrategyPreset { return cfg.strategies[cfg.strategy]; }
