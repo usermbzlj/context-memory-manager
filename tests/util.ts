@@ -63,7 +63,7 @@ export function sampleInput(partial: Partial<ToolEventInput> = {}): ToolEventInp
 export async function cleanup(dir: string, manager: ContextManager): Promise<void> {
   const registered=resources.get(manager) ?? [];
   resources.delete(manager);
-  await cleanupAll(...registered.reverse(),()=>manager.close(),()=>{fs.rmSync(dir,{recursive:true,force:true});});
+  await cleanupAll(...registered.reverse(),()=>manager.close(),()=>{fs.rmSync(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100});});
 }
 
 /**

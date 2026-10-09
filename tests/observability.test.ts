@@ -17,7 +17,7 @@ const scope={agent:'codex',workspaceId:'synthetic-observation-workspace'};
 // These tests read the channel right after each call, so they opt out of the production lease cache and publish coalescing.
 const immediate={publishMs:0,leaseCacheMs:0};
 function temporary() { return fs.mkdtempSync(path.join(os.tmpdir(),'cmm-observability-')); }
-function remove(root: string) { fs.rmSync(root,{recursive:true,force:true}); }
+function remove(root: string) { fs.rmSync(root,{recursive:true,force:true,maxRetries:10,retryDelay:100}); }
 function slot(root: string) { return fs.readdirSync(path.join(root,'runtime')).filter(name=>name.startsWith('slot-')).map(name=>path.join(root,'runtime',name)); }
 async function child(source: string, root: string): Promise<void> {
   const peer=spawn(process.execPath,['--input-type=module','-e',source],{env:{...process.env,CMM_OBS_STORAGE:root},windowsHide:true,stdio:['ignore','pipe','pipe']});

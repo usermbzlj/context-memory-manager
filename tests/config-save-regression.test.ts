@@ -11,7 +11,7 @@ import type { Config } from '../src/types.js';
 const cli = fileURLToPath(new URL('../src/cli.js', import.meta.url));
 function fixture(t: TestContext) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cmm-config-save-'));
-  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
   const cfg = defaultConfig(dir);
   saveConfig(cfg);
   return { dir, cfg, file: path.join(dir, 'config.json') };

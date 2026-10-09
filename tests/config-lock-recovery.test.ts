@@ -7,7 +7,7 @@ import {spawn,spawnSync,type ChildProcess} from 'node:child_process';
 import {defaultConfig,saveConfig,loadConfig,updateConfig,validateConfig,createConfigIfAbsent} from '../src/config.js';
 
 function fixture(t:TestContext) {
-  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cmm-config-recover-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cmm-config-recover-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
   saveConfig(defaultConfig(dir));
   return {dir,file:path.join(dir,'config.json'),lock:path.join(dir,'config.write.lock')};
 }
@@ -53,7 +53,7 @@ test('the writer lock is released after both success and failure',async t=>{
 });
 
 test('an invalid first patch on an absent configuration writes nothing',async t=>{
-  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cmm-config-absent-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cmm-config-absent-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
   await assert.rejects(updateConfig(dir,{integration:{contextWindow:1}}));
   assert.equal(fs.existsSync(path.join(dir,'config.json')),false);assert.equal(fs.existsSync(path.join(dir,'config.write.lock')),false);
   await updateConfig(dir,{strategy:'aggressive'});
@@ -110,7 +110,7 @@ test('brand-new configuration files check every provider entry',()=>{
     const c=defaultConfig(dir);c.providers.chain=[{kind:'openai-compatible',name:'p',model:'m',apiKeyEnv:'SOME_KEY',baseUrl:'http://10.0.0.5/v1'}];
     assert.throws(()=>createConfigIfAbsent(c),/requires an https baseUrl/);
     assert.equal(fs.existsSync(path.join(dir,'config.json')),false);
-  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+  } finally { fs.rmSync(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100}); }
 });
 
 test('releasing the writer lock never removes a lock that another writer now owns',async t=>{

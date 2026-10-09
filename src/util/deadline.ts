@@ -10,7 +10,8 @@ const MAX_TIMER_MS = 2 ** 31 - 1;
 export function createDeadline(ms: number, reason: () => Error, outer?: AbortSignal): Deadline {
   const controller = new AbortController();
   const onOuter = () => controller.abort(outer?.reason);
-  const timer = setTimeout(() => controller.abort(reason()), Math.max(0, Math.min(ms, MAX_TIMER_MS)));
+  const delay = Number.isNaN(ms) ? MAX_TIMER_MS : Math.max(0, Math.min(ms, MAX_TIMER_MS));
+  const timer = setTimeout(() => controller.abort(reason()), delay);
   if (outer?.aborted) onOuter(); else outer?.addEventListener('abort', onOuter, { once: true });
   return {
     signal: controller.signal,

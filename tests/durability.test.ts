@@ -25,7 +25,7 @@ test('a late initial config publisher preserves the winner and its exact bytes',
     assert.deepEqual(fs.readFileSync(file), bytes);
     assert.equal(loadConfig(dir).strategy, 'conservative');
     assert.deepEqual(fs.readdirSync(dir), ['config.json']);
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }
 });
 
 test('simultaneous initial config publishers have exactly one complete winner', async () => {
@@ -67,7 +67,7 @@ test('simultaneous initial config publishers have exactly one complete winner', 
     assert.equal(winners.length, 1);
     assert.equal(loadConfig(dir).integration.maxOutputChars, winners[0].value);
     assert.deepEqual(fs.readdirSync(dir), ['config.json']);
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }
 });
 
 test('three independent Node writers serialize SQLite and deduplicate blobs without losing any call',async()=>{
@@ -89,14 +89,14 @@ test('three independent Node writers serialize SQLite and deduplicate blobs with
       const service=new MemoryService(manager,{agent:'concurrent',workspaceId:dir});assert.equal(service.status().archive?.events,60);assert.equal((await service.verify()).checked,60);assert.equal((await service.verify()).failed,0);
       const refs=manager.db.queryAll<{ref:string}>('SELECT DISTINCT result_ref AS ref FROM tool_events');assert.equal(refs.length,1);
     }finally{manager.close();}
-  }finally{fs.rmSync(dir,{recursive:true,force:true});}
+  }finally{fs.rmSync(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
 });
 test('future database schema is refused before any table or user_version is rewritten',async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cmm-future-'));let raw:DatabaseSync|undefined;
   try {
     const file=path.join(dir,'cmm.db');raw=new DatabaseSync(file);raw.exec('CREATE TABLE future_data(value TEXT); INSERT INTO future_data VALUES (\'do not alter\'); PRAGMA user_version=999;');raw.close();raw=undefined;
     assert.throws(()=>ContextManager.open(dir),/newer/);raw=new DatabaseSync(file);assert.equal((raw.prepare('PRAGMA user_version').get() as any).user_version,999);assert.equal((raw.prepare('SELECT * FROM future_data').get() as any).value,'do not alter');assert.equal(raw.prepare("SELECT name FROM sqlite_master WHERE name='tool_events'").get(),undefined);
-  }finally{await cleanupAll(()=>raw?.close(),()=>{fs.rmSync(dir,{recursive:true,force:true});});}
+  }finally{await cleanupAll(()=>raw?.close(),()=>{fs.rmSync(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100});});}
 });
 test('nested transactions roll back only their savepoint and async callbacks cannot commit',async t=>{
   const {manager,dir}=await makeManager();t.after(()=>cleanup(dir,manager));

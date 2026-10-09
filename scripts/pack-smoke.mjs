@@ -15,10 +15,12 @@ const interrupt=()=>{
   if(lifecycle){void lifecycle.shutdown().catch(()=>{});interruptPending?.(new Error('Pack smoke interrupted'));}
 };
 process.on('SIGINT',interrupt);process.on('SIGTERM',interrupt);
-const run=(args,options={})=>{if(interrupted)throw new Error('Pack smoke interrupted');const r=spawnSync(process.execPath,args,{encoding:'utf8',timeout:20000,...options});assert.equal(r.status,0,r.stderr);return r.stdout;};
+const run=(args,options={})=>{if(interrupted)throw new Error('Pack smoke interrupted');const r=spawnSync(process.execPath,args,{encoding:'utf8',timeout:20000,...options});assert.equal(r.status,0,r.stderr||(r.error?.code==='ETIMEDOUT'?`timed out: ${path.basename(String(args[0]))} ${args[1]??''}`:`exited by ${r.signal}`));return r.stdout;};
+// npm pack/install can take well over 20 s on shared Windows CI runners.
+const NPM_TIMEOUT={timeout:180000};
 try {
   assert.ok(process.env.npm_execpath,'Run this check with npm run test:pack');
-  const packed=JSON.parse(run([process.env.npm_execpath,'pack','--offline','--ignore-scripts','--json','--pack-destination',tmp]))[0];
+  const packed=JSON.parse(run([process.env.npm_execpath,'pack','--offline','--ignore-scripts','--json','--pack-destination',tmp],NPM_TIMEOUT))[0];
   assert.ok(packed.files.some(f=>f.path==='dist/src/integrations/opencode.js'));
   assert.ok(packed.files.some(f=>f.path==='dist/src/cli.js'));
   assert.ok(packed.files.some(f=>f.path==='dist/src/dashboard/assets/index.html'));
@@ -30,7 +32,7 @@ try {
   const tarball=path.join(tmp,packed.filename);
   // npm installs a local dependency archive into an isolated prefix without scripts.
   const prefix=path.join(tmp,'consumer');fs.mkdirSync(prefix);
-  run([process.env.npm_execpath,'install','--offline','--ignore-scripts','--no-audit','--no-fund','--prefix',prefix,tarball]);
+  run([process.env.npm_execpath,'install','--offline','--ignore-scripts','--no-audit','--no-fund','--prefix',prefix,tarball],NPM_TIMEOUT);
   const base=path.join(prefix,'node_modules','context-memory-manager');
   const {observeChild}=await import(pathToFileURL(path.join(base,'dist','src','util','child-lifecycle.js')).href);
   if(interrupted)throw new Error('Pack smoke interrupted');

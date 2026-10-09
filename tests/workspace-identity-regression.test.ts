@@ -16,7 +16,7 @@ function removeTemporaryRoot(dir: string): void {
   const relative = path.relative(path.resolve(os.tmpdir()), path.resolve(dir));
   assert.ok(relative && !relative.startsWith('..') && !path.isAbsolute(relative));
   assert.ok(path.basename(dir).startsWith('cmm-workspace-regression-'));
-  fs.rmSync(dir, { recursive: true, force: true });
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 }
 
 test('Windows drive and UNC identities are lexical, idempotent and preserve component case', t => {

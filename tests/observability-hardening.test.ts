@@ -15,7 +15,7 @@ import { createRuntimeObserver, enableRuntime, readRuntime, RUNTIME_LIMITS } fro
 const scope={agent:'codex',workspaceId:'synthetic-hardening-workspace'};
 const immediate={publishMs:0,leaseCacheMs:0};
 const temporary=()=>fs.mkdtempSync(path.join(os.tmpdir(),'cmm-obs-hardening-'));
-const remove=(root:string)=>fs.rmSync(root,{recursive:true,force:true});
+const remove=(root:string)=>fs.rmSync(root,{recursive:true,force:true,maxRetries:10,retryDelay:100});
 const slotFile=(root:string,index:number)=>path.join(root,'runtime',`slot-${String(index).padStart(3,'0')}.json`);
 const slots=(root:string)=>fs.readdirSync(path.join(root,'runtime')).filter(name=>name.startsWith('slot-')).map(name=>path.join(root,'runtime',name));
 const read=(file:string)=>JSON.parse(fs.readFileSync(file,'utf8'));

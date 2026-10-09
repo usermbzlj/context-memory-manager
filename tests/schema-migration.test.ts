@@ -113,7 +113,7 @@ describe('schema migrations', () => {
         m=undefined;
       }
     } finally {
-      await cleanupAll(()=>raw?.close(),()=>m?.close(),()=>{fs.rmSync(dir,{recursive:true,force:true});});
+      await cleanupAll(()=>raw?.close(),()=>m?.close(),()=>{fs.rmSync(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100});});
     }
   });
 });
@@ -149,7 +149,7 @@ it('migrates the actual uploaded v0.1 schema-v2 constraints, preserves evidence 
     manager.close();manager=ContextManager.open(dir,{logging:{dir:null}});
     assert.equal(manager.db.queryAll('SELECT * FROM archive_search').length,3);
     assert.equal((await manager.recallEvent(row.id,row.agent,row.workspace_id)).result,original.result);
-  }finally{await cleanupAll(()=>manager?.close(),()=>{fs.rmSync(dir,{recursive:true,force:true});});}
+  }finally{await cleanupAll(()=>manager?.close(),()=>{fs.rmSync(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100});});}
 });
 
 it('upgrades the actual v0.2 schema-v3 layout without inventing provenance or trusting legacy markers',async()=>{
@@ -181,5 +181,5 @@ it('upgrades the actual v0.2 schema-v3 layout without inventing provenance or tr
     assert.equal((await upgraded.verify(true)).failed,0);assert.equal(upgraded.search('middle').results[0].eventId,row.id);
     manager.close();manager=ContextManager.open(dir,{logging:{dir:null}});
     assert.equal(manager.db.queryOne<{user_version:number}>('PRAGMA user_version')?.user_version,4);
-  }finally{await cleanupAll(()=>manager?.close(),()=>{fs.rmSync(dir,{recursive:true,force:true});});}
+  }finally{await cleanupAll(()=>manager?.close(),()=>{fs.rmSync(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100});});}
 });
