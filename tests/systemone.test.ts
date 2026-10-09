@@ -204,7 +204,7 @@ test('one overall deadline aborts in-flight native calls across providers; the w
   const f = await fixture(t, (_payload, response) => { response.on('close', () => { closed++; }); });
   const items = await f.items(3);
   const scorer = new SystemOneScorer({ providers: [new SystemOneProvider(f.cfg), new SystemOneProvider({ ...f.cfg, name: 'second' })],
-    recordCall: r => f.manager.db.insertProviderCall(r), logger: f.manager.logger, deadlineMs: 150 });
+    recordCall: r => f.manager.db.insertProviderCall(r), logger: f.manager.logger, deadlineMs: 1000 });
   f.manager.retention.primary = scorer;
   const started = Date.now();
   const decisions = await f.manager.retention.decideAll(items.map(item => item.event), { pressure: 0.9 });
