@@ -94,11 +94,16 @@ export class ArchiveServiceImpl implements ArchiveService {
       if (url) this.db.run('UPDATE workspaces SET git_remote = ? WHERE agent = ? AND id = ?', [url, agent, workspace]);
     } catch { /* Optional metadata, never a requirement for archival. */ }
   }
+  private observe(source: {agent: string; workspaceId: string; eventId: string} | undefined, status: 'ok' | 'error'): void {
+    if (!source) return;
+    try { this.observeIndex?.(source)({status}); } catch { /* Diagnostics fail open. */ }
+  }
   async archive(input: ToolEventInput, turn: number, descriptor: ToolDescriptor): Promise<ToolEvent & { inserted: boolean }> {
     if (this.failNext) { this.failNext = false; throw new ArchiveError('injected archive failure'); }
     validateToolInput(input);
     let workspaceId = normalizeWorkspaceId(input.workspaceId);
     const provenance = inferProvenance(input);
+    let indexed: {agent: string; workspaceId: string; eventId: string} | undefined;
     try {
       const saved = this.db.transaction(() => {
         workspaceId = resolveWorkspaceId(this.db, input.agent, input.workspaceId);
@@ -112,9 +117,18 @@ export class ArchiveServiceImpl implements ArchiveService {
             throw new ArchiveError('archive identity conflict: the same tool call has different content; original preserved');
           }
           this.readRow(old); // A duplicate must still have readable, verified originals.
-          const merged = mergeObservedProvenance(provenanceFor(this.db, old.id), provenance);
-          this.db.run('INSERT INTO evidence_provenance(event_id,json) VALUES(?,?) ON CONFLICT(event_id) DO UPDATE SET json=excluded.json',
-            [old.id, JSON.stringify(merged)]);
+          // Hold the writer lock for a write only when the observation adds a restriction.
+          // Unreadable stored provenance is left untouched: a harmless duplicate never fails
+          // capture and can never promote completeness.
+          let update: string | undefined;
+          try {
+            const stored = provenanceFor(this.db, old.id);
+            const merged = JSON.stringify(mergeObservedProvenance(stored, provenance));
+            if (merged !== JSON.stringify(stored)) update = merged;
+          } catch { /* Invalid stored provenance stays as found. */ }
+          if (update !== undefined)
+            this.db.run('INSERT INTO evidence_provenance(event_id,json) VALUES(?,?) ON CONFLICT(event_id) DO UPDATE SET json=excluded.json',
+              [old.id, update]);
           return { ...rowToToolEvent(old), inserted: false };
         }
         // Files and references share the writer lock with GC. A new writer cannot
@@ -133,22 +147,18 @@ export class ArchiveServiceImpl implements ArchiveService {
         };
         this.db.insertToolEvent(row);
         this.db.run('INSERT INTO evidence_provenance(event_id,json) VALUES(?,?)', [row.id, JSON.stringify(provenance)]);
-        let endIndex: ((result:{status:'ok'|'error'})=>void) | undefined;
-        try {endIndex=this.observeIndex?.({agent:input.agent,workspaceId,eventId:row.id});} catch { /* Diagnostics fail open. */ }
-        try {
-          indexEvidence(this.db, row.id, input.input, input.result);
-          this.db.run('INSERT INTO archive_search(event_id,agent,workspace,tool,body) VALUES(?,?,?,?,?)',
-            [row.id, input.agent, workspaceId, input.toolName, searchBody(input.input, input.result, descriptor)]);
-        } catch (error) {
-          try {endIndex?.({status:'error'});} catch { /* fail-open */ }
-          throw error;
-        }
-        try {endIndex?.({status:'ok'});} catch { /* fail-open */ }
+        // Observation writes files: keep it out of the SQLite writer lock and emit it after the outcome is known.
+        indexed = {agent: input.agent, workspaceId, eventId: row.id};
+        indexEvidence(this.db, row.id, input.input, input.result);
+        this.db.run('INSERT INTO archive_search(event_id,agent,workspace,tool,body) VALUES(?,?,?,?,?)',
+          [row.id, input.agent, workspaceId, input.toolName, searchBody(input.input, input.result, descriptor)]);
         return { ...rowToToolEvent(row), inserted: true };
       });
+      if (saved.inserted) {this.observe(indexed, 'ok'); indexed = undefined;}
       this.captureGitRemote(input.agent, workspaceId);
       return saved;
     } catch (error) {
+      this.observe(indexed, 'error');
       if (error instanceof ArchiveError) throw error;
       throw new ArchiveError(`archive write failed: ${error instanceof Error ? error.message : String(error)}`, {cause: error});
     }

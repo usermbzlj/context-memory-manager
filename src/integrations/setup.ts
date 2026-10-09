@@ -29,9 +29,10 @@ export function hookCommand(options:SetupOptions):string {
   if(options.agent==='codex' && (options.platform ?? process.platform)==='win32') {
     // Codex uses the Windows session's PowerShell. Quoted executable strings need
     // the call operator, and literal strings must not expand $variables/backticks.
+    // PowerShell also treats U+2018/2019/201A/201B as single-quote delimiters.
     const quote=(value:string)=>{
       if(/[\r\n\0]/.test(value))throw new Error('Newlines/NUL are not valid in generated hook commands');
-      return "'"+value.replaceAll("'","''")+"'";
+      return "'"+value.replace(/['\u2018\u2019\u201A\u201B]/g,q=>q+q)+"'";
     };
     return '& '+hookArgv(options).map(quote).join(' ');
   }

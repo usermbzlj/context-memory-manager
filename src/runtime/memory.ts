@@ -375,22 +375,40 @@ export class MemoryService {
     // Atomic publication of an entire batch. A concurrent pin/corrupt archive aborts
     // this batch rather than persisting a misleading successful rewrite receipt.
     try {
-      this.manager.db.transaction(() => {
+      const published=this.manager.db.transaction(() => {
+        const publishable: Projection[] = [];
         for (const p of proposed) {
           const row=this.manager.db.getEventView(p.eventId,sid) ?? this.event(p.eventId);
           if (this.protected(row,sid) || row.state==='hot') throw new Error('History batch protection changed');
+          // Eligibility was decided before awaited reads; a concurrent observation or duplicate
+          // capture may since have restricted the source. Unreadable provenance is not proof of completeness.
+          const entry=verified.find(e => e.row.id===p.eventId)!;
+          let restricted=row.result_sha!==entry.row.result_sha;
+          if (!restricted) try {
+            const provenance=provenanceFor(this.manager.db,p.eventId);
+            restricted=provenance.origin==='upstream-filtered' || provenance.completeness==='partial';
+          } catch { restricted=true; }
+          if (!restricted) publishable.push(p);
+        }
+        const kept=new Map(items.map(i => [i.eventId,i.output.length]));
+        const chars=publishable.reduce((n,p) => n+(kept.get(p.eventId) ?? 0)-p.text.length,0);
+        if (!publishable.length || chars < cfg.minHistorySavingsChars) return null;
+        for (const p of publishable) {
+          const row=this.manager.db.getEventView(p.eventId,sid) ?? this.event(p.eventId);
           this.commitProjection(p,sid,'history','text',row.result_sha);
         }
         const before=items.reduce((n,i)=>n+i.output.length,0);
-        const outputById=new Map([...projections,...proposed].map(p=>[p.eventId,p.text]));
+        const outputById=new Map([...projections,...publishable].map(p=>[p.eventId,p.text]));
         const after=items.reduce((n,i)=>n+(outputById.get(i.eventId) ?? i.output).length,0);
         this.manager.db.run(`INSERT INTO history_batches(session_id,last_turn,batches,source,before_chars,after_chars,changed_events,updated_at)
           VALUES(?,?,1,?,?,?,?,?) ON CONFLICT(session_id) DO UPDATE SET last_turn=excluded.last_turn,batches=batches+1,
           source=excluded.source,before_chars=excluded.before_chars,after_chars=excluded.after_chars,
           changed_events=excluded.changed_events,updated_at=excluded.updated_at`,
-          [sid,turn,source,before,after,proposed.length,Date.now()]);
+          [sid,turn,source,before,after,publishable.length,Date.now()]);
+        return publishable;
       });
-      projections.push(...proposed);
+      if (!published) return finish('batch-aborted-originals-kept',tidy);
+      projections.push(...published);
       return finish('pressure-batch-published',tidy);
     } catch (error) {this.health('history',errorMessage(error));return finish('batch-aborted-originals-kept',tidy);}
   }
@@ -456,7 +474,11 @@ export class MemoryService {
         else checked++;
       } catch (error) {
         options.signal?.throwIfAborted();
-        failed++;if(failures.length<50) failures.push({eventId:row.id,error:errorMessage(error)});
+        // GC may retire the event while verification yields. A row that is gone
+        // (and tombstoned) is skipped; a row that still exists is real corruption.
+        if (this.manager.db.getToolEvent(row.id)) {
+          failed++;if(failures.length<50) failures.push({eventId:row.id,error:errorMessage(error)});
+        }
       }
       visited++;
       if (visited%8===0) {progress();await yieldImmediate();options.signal?.throwIfAborted();}
@@ -465,6 +487,7 @@ export class MemoryService {
     const receipts=this.manager.db.queryAll<ProjectionReceipt>(
       `SELECT p.* FROM projection_cache p JOIN tool_events e ON e.id=p.event_id WHERE ${pwhere.sql}`,pwhere.params);
     projectionTotal=receipts.length;progress();
+    let receiptsVisited=0;
     for (const receipt of receipts) {
       options.signal?.throwIfAborted();
       projectionChecked++;
@@ -475,9 +498,12 @@ export class MemoryService {
         validateProjectionReceipt(this.manager.db,row,receipt,raw.result);
       } catch (error) {
         options.signal?.throwIfAborted();
-        projectionFailed++; if(failures.length<50) failures.push({eventId:receipt.event_id,error:errorMessage(error)});
+        // A receipt of an event retired by concurrent GC is neither checked nor failed.
+        if (this.manager.db.getToolEvent(receipt.event_id)) {
+          projectionFailed++; if(failures.length<50) failures.push({eventId:receipt.event_id,error:errorMessage(error)});
+        } else projectionChecked--;
       }
-      if (projectionChecked%8===0) {progress();await yieldImmediate();options.signal?.throwIfAborted();}
+      if (++receiptsVisited%8===0) {progress();await yieldImmediate();options.signal?.throwIfAborted();}
     }
     progress();
     failed+=projectionFailed;

@@ -101,13 +101,14 @@ test('Codex Windows hooks quote PowerShell literals while other shells retain th
   const opts:SetupOptions={agent:'codex',workspace:"C:\\project's $HOME ` & (中文)",storage:'C:\\archive',cli:'C:\\cmm\\cli.js',node:'C:\\Program Files\\nodejs\\node.exe',platform:'win32'};
   assert.match(hookCommand(opts),/^& 'C:\\Program Files\\nodejs\\node\.exe'/);
   assert.ok(hookCommand(opts).includes("'C:\\project''s $HOME ` & (中文)'"));
+  assert.ok(hookCommand({...opts,workspace:'C:\\O\u2019Brien \u2018x\u201A\u201B\'y'}).includes("'C:\\O\u2019\u2019Brien \u2018\u2018x\u201A\u201A\u201B\u201B''y'"),'typographic single quotes are PowerShell delimiters and must be doubled');
   assert.ok(!hookCommand({...opts,agent:'kimi',workspace:'C:\\project'}).startsWith('& '));
   assert.ok(!hookCommand({...opts,platform:'linux'}).startsWith('& '));
   assert.throws(()=>hookCommand({...opts,storage:'bad\npath'}),/Newlines\/NUL/);
 });
 test('generated Codex hook upgrades the old command and archives through real Windows PowerShell', {skip:process.platform!=='win32'},async t=>{
   const {dir}=await fixture(t,'codex');
-  const workspace=path.join(dir,"project 中文's $HOME ` & (fixture)"),storage=path.join(dir,"archive's $HOME ` & (fixture)");
+  const workspace=path.join(dir,"project 中文's O\u2019Brien \u2018quoted\u2019 \u201A\u201B $HOME ` & (fixture)"),storage=path.join(dir,"archive's D\u2019Arcy $HOME ` & (fixture)");
   fs.mkdirSync(path.join(workspace,'.codex'),{recursive:true});
   const file=path.join(workspace,'.codex','hooks.json');
   const legacy={type:'command',command:'"node" "cli.js" hook codex --managed-by-cmm',timeout:15};
@@ -130,6 +131,7 @@ test('generated Codex hook upgrades the old command and archives through real Wi
     assert.equal(executed.status,0,executed.stderr);assert.equal(executed.stdout,'');assert.equal(executed.stderr,'');
     executedShells.push(shell);
   }
+  assert.ok(executedShells.includes('powershell.exe'),'Windows PowerShell 5.1 is always present on win32');
   const scope=['--agent','codex','--workspace',workspace,'--storage',storage];
   const found=run(['search',...scope]);assert.equal(found.status,0,found.stderr);
   const results=JSON.parse(found.stdout).results;assert.equal(results.length,executedShells.length);
