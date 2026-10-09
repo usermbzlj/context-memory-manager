@@ -46,7 +46,7 @@ import {
 import { RuleChainLinker } from '../chains/linker.js';
 import { buildProviders } from '../providers/index.js';
 import { observeProvider } from '../providers/failover.js';
-import { createRuntimeObserver, type RuntimeObserver, type ObserverOptions } from '../observability/runtime.js';
+import { createRuntimeObserver, type RuntimeKind, type RuntimeObserver, type ObserverOptions } from '../observability/runtime.js';
 import { PressureMonitor } from './pressure.js';
 import { RetentionEngine } from './retention.js';
 import { eventProtectionReason } from './protection.js';
@@ -61,9 +61,13 @@ const TIDY_BATCH_LIMIT = 8;
 /** Max tidy passes per maybeTidy call (loop-to-release guard). */
 const MAX_TIDY_PASSES = 3;
 
+// Fixed core event names -> the observed operation kind that degraded. Only the name is read, never its fields.
+const fallbackEvents: Record<string,RuntimeKind> = {
+  'model fallback':'score','capsule failed':'score','chain model assist failed':'chain','capsule validation':'capsule',
+};
 function observeFallbackLogger(base: Logger, observer: RuntimeObserver): Logger {
   return {
-    log(event,fields) {if(event==='model fallback')observer.noteFallback();base.log(event,fields);},
+    log(event,fields) {const kind=fallbackEvents[event];if(kind)observer.noteFallback(kind);base.log(event,fields);},
     child(fields) {return observeFallbackLogger(base.child(fields),observer);},
     close() {base.close();},
   };
@@ -94,7 +98,7 @@ class ObservedRetentionEngine extends RetentionEngine {
       const end=this.observer.operation({kind:'score',role:'retention'});
       try {
         const result=await super.decideAll(...args);
-        end({status:result.some(d=>/fallback|capsule-failed|archive-unavailable/.test(d.reason))?'fallback':'ok'});
+        end();
         return result;
       } catch (error) {end({status:'error'});throw error;}
     });
@@ -337,7 +341,7 @@ export class ContextManager {
       }
       endChain();
     } catch (e) {
-      endChain({status:'fallback'});
+      endChain({status:'error'});
       this.logger.log('chain linking failed', {
         eventId: event.id,
         error: String(e),

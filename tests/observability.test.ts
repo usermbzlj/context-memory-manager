@@ -14,6 +14,8 @@ import { rowToToolEvent } from '../src/types.js';
 import { createRuntimeObserver, enableRuntime, observeOperation, readRuntime, RUNTIME_LIMITS } from '../src/observability/runtime.js';
 
 const scope={agent:'codex',workspaceId:'synthetic-observation-workspace'};
+// These tests read the channel right after each call, so they opt out of the production lease cache and publish coalescing.
+const immediate={publishMs:0,leaseCacheMs:0};
 function temporary() { return fs.mkdtempSync(path.join(os.tmpdir(),'cmm-observability-')); }
 function remove(root: string) { fs.rmSync(root,{recursive:true,force:true}); }
 function slot(root: string) { return fs.readdirSync(path.join(root,'runtime')).filter(name=>name.startsWith('slot-')).map(name=>path.join(root,'runtime',name)); }
@@ -42,7 +44,7 @@ test('runtime stays disabled without a dashboard lease; unavailable channels nev
 });
 
 test('operation snapshots show real start/end, source scope and stable adopted revision with no private content',async () => {
-  const root=temporary(),lease=enableRuntime(root),manager=ContextManager.open(root);
+  const root=temporary(),lease=enableRuntime(root),manager=ContextManager.open(root,undefined,immediate);
   const service=new MemoryService(manager,scope);
   try {
     const end=manager.runtime.operation({kind:'provider',scope,role:'retention',provider:'Clef',model:'clef-flash'});
@@ -82,7 +84,7 @@ test('independent hook process observations are visible and terminate without a 
 });
 
 test('stale heartbeats never become running activities or PID liveness assertions; lease replacement isolates observation windows',() => {
-  const root=temporary(),lease=enableRuntime(root),observer=createRuntimeObserver(root,{scope,persistent:false});
+  const root=temporary(),lease=enableRuntime(root),observer=createRuntimeObserver(root,{scope,persistent:false,...immediate});
   try {
     const end=observer.operation({kind:'archive'});
     const file=slot(root)[0],state=JSON.parse(fs.readFileSync(file,'utf8'));
@@ -94,7 +96,7 @@ test('stale heartbeats never become running activities or PID liveness assertion
     end();assert.equal(readRuntime(root,scope).events.length,0);
     const next=observer.operation({kind:'index'});next();
     assert.deepEqual(readRuntime(root,scope).events.map(e=>e.kind),['index','index']);
-    const closing=createRuntimeObserver(root,{scope,persistent:false});
+    const closing=createRuntimeObserver(root,{scope,persistent:false,...immediate});
     const third=enableRuntime(root);closing.close();
     assert.equal(readRuntime(root,scope).instances.length,0,'close cannot resurrect an instance in a replacement lease');
     third.stop();
@@ -123,7 +125,7 @@ test('interrupted stale metadata can be recycled without touching the archive',(
 });
 
 test('runtime data is bounded across hook churn, active operations, labels, and untrusted metadata files',() => {
-  const root=temporary(),lease=enableRuntime(root),observer=createRuntimeObserver(root,{scope,persistent:false});
+  const root=temporary(),lease=enableRuntime(root),observer=createRuntimeObserver(root,{scope,persistent:false,...immediate});
   try {
     const ends=Array.from({length:40},()=>observer.operation({kind:'provider',provider:'sk-SECRET_API_KEY_123456789',model:'Bearer secret',role:'capsule'}));
     assert.equal(readRuntime(root,scope).activities.length,RUNTIME_LIMITS.activities);
@@ -161,7 +163,7 @@ test('provider observation includes validation failures and preserves the origin
 });
 
 test('a conservative scoring fallback is observed even when its low score keeps the event',async () => {
-  const root=temporary(),lease=enableRuntime(root),manager=ContextManager.open(root),service=new MemoryService(manager,scope);
+  const root=temporary(),lease=enableRuntime(root),manager=ContextManager.open(root,undefined,immediate),service=new MemoryService(manager,scope);
   try {
     const saved=await service.capture({sessionId:'s',toolName:'Read',input:'x',result:'y'});
     const event=rowToToolEvent(service.event(saved.eventId!));
@@ -196,7 +198,7 @@ test('unpin rolls back intermediate writes and rechecks the source agent inside 
 });
 
 test('verify exposes progress, yields to cancellation, and preserves captured bytes and completeness',async () => {
-  const root=temporary(),lease=enableRuntime(root),manager=ContextManager.open(root),service=new MemoryService(manager,scope);
+  const root=temporary(),lease=enableRuntime(root),manager=ContextManager.open(root,undefined,immediate),service=new MemoryService(manager,scope);
   try {
     for(let i=0;i<20;i++)await service.capture({sessionId:'s',toolCallId:`call-${i}`,toolName:'Read',input:'synthetic input',result:`original-${i}`});
     const controller=new AbortController(),progress:VerificationProgress[]=[];

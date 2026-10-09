@@ -1,5 +1,6 @@
 import type { BatchScoreItem, Logger, ModelProvider, ProviderCallRecord, RetentionScorer, ScorerContext, ToolEvent } from '../types.js';
-import { completeWithFailover } from '../providers/failover.js';
+import { completeWithFailover, FAILOVER_DEADLINE_MS } from '../providers/failover.js';
+import type { AbortableRequest } from '../providers/provider.js';
 import { estimateTokens } from '../descriptor.js';
 
 function requestFor(items: BatchScoreItem[]) {
@@ -36,10 +37,13 @@ function scoresFrom(text: string, count: number): number[] {
   });
 }
 
+/** One budget for the whole batch (all groups, all providers); it is awaited on the host request path. */
+export const SCORING_DEADLINE_MS = FAILOVER_DEADLINE_MS.retention;
+
 /** Map native P(safe to remove) to safeToEvict, preserving ordered whole-batch fallback. */
 export class SystemOneScorer implements RetentionScorer {
   readonly name = 'systemone';
-  constructor(private readonly opts: { providers: ModelProvider[]; recordCall: (r: ProviderCallRecord) => void; logger: Logger }) {}
+  constructor(private readonly opts: { providers: ModelProvider[]; recordCall: (r: ProviderCallRecord) => void; logger: Logger; deadlineMs?: number }) {}
 
   async score(event: ToolEvent, ctx: ScorerContext): Promise<number> {
     return (await this.scoreBatch([{ event, ctx }]))[0];
@@ -48,6 +52,9 @@ export class SystemOneScorer implements RetentionScorer {
   async scoreBatch(items: BatchScoreItem[]): Promise<number[]> {
     if (items.length === 0) return [];
     if (items.length > 24) throw new Error('systemone: scoring batch exceeds 24 events');
+    const deadlineMs = this.opts.deadlineMs ?? SCORING_DEADLINE_MS;
+    // Aborts in-flight HTTP work; on expiry the whole batch throws and the engine falls back conservatively.
+    const signal = AbortSignal.timeout(deadlineMs);
     const scores: number[] = [];
     for (let offset = 0; offset < items.length;) {
       const group: BatchScoreItem[] = [];
@@ -64,8 +71,9 @@ export class SystemOneScorer implements RetentionScorer {
         group.push(items[offset + group.length]);
         user = candidate;
       }
-      const result = await completeWithFailover(this.opts.providers, { user, timeoutMs: 30000 }, {
-        purpose: 'retention', recordCall: this.opts.recordCall, logger: this.opts.logger,
+      const request: AbortableRequest = { user, timeoutMs: Math.min(30000, deadlineMs), signal };
+      const result = await completeWithFailover(this.opts.providers, request, {
+        purpose: 'retention', deadlineMs, recordCall: this.opts.recordCall, logger: this.opts.logger,
         validate: response => { scoresFrom(response.text, group.length); },
       });
       scores.push(...scoresFrom(result.text, group.length));

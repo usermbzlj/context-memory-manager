@@ -14,7 +14,7 @@ import type {
   ModelProvider,
   ProviderCallRecord,
 } from '../types.js';
-import { ProviderError } from './provider.js';
+import { ProviderError, type AbortableRequest } from './provider.js';
 import { errorMessage } from '../util/validation.js';
 import { redact } from '../logging.js';
 
@@ -25,6 +25,22 @@ export type ProviderAttemptObserver = (attempt: {purpose: 'retention'|'capsule'|
 const observers = new WeakMap<ModelProvider,ProviderAttemptObserver>();
 export function observeProvider(provider: ModelProvider, observer: ProviderAttemptObserver): void { observers.set(provider,observer); }
 
+/**
+ * Overall wall-clock budget across all providers of one call. Retention scoring is awaited on the host
+ * request path, so it gets the tightest bound; per-attempt timeouts alone would multiply by the provider count.
+ */
+export const FAILOVER_DEADLINE_MS = Object.freeze({ retention: 20_000, capsule: 45_000, chain: 20_000 });
+
+function whenAborted(signal: AbortSignal): { promise: Promise<never>; release(): void } {
+  let onAbort: () => void = () => {};
+  const promise = new Promise<never>((_, reject) => {
+    onAbort = () => reject(new ProviderError('overall provider deadline exceeded or cancelled'));
+    if (signal.aborted) onAbort(); else signal.addEventListener('abort', onAbort, { once: true });
+  });
+  promise.catch(() => {});
+  return { promise, release: () => signal.removeEventListener('abort', onAbort) };
+}
+
 export async function completeWithFailover(
   providers: ModelProvider[],
   req: CompletionRequest,
@@ -34,6 +50,8 @@ export async function completeWithFailover(
     logger: Logger;
     validate?: (response: CompletionResponse) => void;
     observe?: ProviderAttemptObserver;
+    /** Overall budget across providers; defaults per purpose (FAILOVER_DEADLINE_MS). */
+    deadlineMs?: number;
   },
 ): Promise<CompletionResponse> {
   if (providers.length === 0) {
@@ -41,15 +59,28 @@ export async function completeWithFailover(
   }
   const { purpose, recordCall, logger } = opts;
   let lastError: unknown = null;
+  const budget = opts.deadlineMs ?? FAILOVER_DEADLINE_MS[purpose];
+  const endsAt = Date.now() + budget;
+  const deadline = AbortSignal.timeout(budget);
+  const caller = (req as AbortableRequest).signal;
+  const signal = caller ? AbortSignal.any([deadline, caller]) : deadline;
 
   for (let i = 0; i < providers.length; i++) {
     const p = providers[i];
+    if (signal.aborted) { lastError = new ProviderError('overall provider deadline exceeded or cancelled'); break; }
+    // A stalled provider may use only its share of what is left, so later providers still get a turn.
+    const share = Math.max(1, Math.floor((endsAt - Date.now()) / (providers.length - i)));
+    const attemptSignal = AbortSignal.any([signal, AbortSignal.timeout(Math.min(req.timeoutMs && req.timeoutMs > 0 ? req.timeoutMs : Infinity, share))]);
     let received: CompletionResponse | undefined;
     let attemptOk = false;
     let end: ReturnType<ProviderAttemptObserver> | undefined;
     try { end=(opts.observe ?? observers.get(p))?.({purpose,provider:p.name}); } catch { /* Diagnostics never affect failover. */ }
     try {
-      const res = received = await p.complete(req);
+      // Providers get the attempt signal to abort real I/O; the race also bounds providers that ignore it.
+      const attempt: AbortableRequest = { ...req, signal: attemptSignal };
+      const aborted = whenAborted(attemptSignal);
+      let res: CompletionResponse;
+      try { res = received = await Promise.race([p.complete(attempt), aborted.promise]); } finally { aborted.release(); }
       opts.validate?.(res);
       recordCall({
         provider: p.name,

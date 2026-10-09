@@ -1,12 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 // This is a lossy diagnostics channel, never an archive or instruction channel.
 // Fixed slots bound disk use even when thousands of short-lived hooks run.
 export const RUNTIME_LIMITS = Object.freeze({ slots: 128, events: 64, activities: 32,
-  fileBytes: 64 * 1024, leaseMs: 15_000, staleMs: 15_000, heartbeatMs: 3_000 });
+  fileBytes: 64 * 1024, leaseMs: 15_000, staleMs: 15_000, heartbeatMs: 3_000,
+  leaseCacheMs: 1_000, publishMs: 250, probes: 16 });
 const kinds = new Set(['capture','archive','index','score','capsule','chain','provider','verify','reindex','pin','unpin','config','maintenance']);
 const components = new Set(['manager','hook','bridge','worker','dashboard']);
 const statuses = new Set(['ok','error','fallback','cancelled']);
@@ -27,7 +28,8 @@ interface InstanceFile {
 export interface RuntimeInstance extends Omit<InstanceFile,'activities'|'events'> { state: 'idle'|'busy'|'stopped'|'stale'; stale: boolean; activityCount: number }
 export interface RuntimeSnapshot { observedAt: number; enabled: boolean; leaseId?: string; instances: RuntimeInstance[];
   activities: RuntimeActivity[]; events: RuntimeEvent[]; truncated: boolean; coverage: 'bounded-best-effort' }
-export interface ObserverOptions { component?: RuntimeComponent; scope?: RuntimeScope; configRevision?: string; persistent?: boolean }
+export interface ObserverOptions { component?: RuntimeComponent; scope?: RuntimeScope; configRevision?: string; persistent?: boolean;
+  /** Test seams for the lease-read cache and publish coalescing windows (defaults in RUNTIME_LIMITS). */ leaseCacheMs?: number; publishMs?: number }
 
 function identifier(value: unknown, max = 100): string | undefined {
   // Provider/model labels are identifiers, not arbitrary text or error bodies.
@@ -38,8 +40,9 @@ function identifier(value: unknown, max = 100): string | undefined {
 function cleanScope(value?: RuntimeScope): RuntimeScope | undefined {
   const agent = identifier(value?.agent,200);
   const workspaceId = value?.workspaceId;
-  return agent && typeof workspaceId === 'string' && workspaceId.length <= 4096 &&
-    !/[\x00-\x1f]/.test(workspaceId) ? { agent, workspaceId } : undefined;
+  if (!agent || typeof workspaceId !== 'string' || workspaceId.length > 4096 || /[\x00-\x1f]/.test(workspaceId)) return undefined;
+  // Long ids are replaced by a stable digest (applied to readers' filters too) so scope strings cannot exhaust the 64 KiB file.
+  return { agent, workspaceId: workspaceId.length > 256 ? `sha256:${createHash('sha256').update(workspaceId).digest('hex').slice(0,32)}` : workspaceId };
 }
 function metadata(input: OperationInput): OperationInput | undefined {
   if (!kinds.has(input.kind)) return undefined;
@@ -54,8 +57,18 @@ function metadata(input: OperationInput): OperationInput | undefined {
   if (scope && typeof input.eventId === 'string' && uuid.test(input.eventId)) out.eventId = input.eventId;
   return out;
 }
+const transientCodes = new Set(['EPERM','EBUSY','EACCES']);
+const codeOf = (error: unknown): unknown => (error as NodeJS.ErrnoException | undefined)?.code;
+const sleeper = new Int32Array(new SharedArrayBuffer(4));
+/** Bounded synchronous pause for Windows sharing violations; never used on a hot path without a failure. */
+function pause(ms: number): void { Atomics.wait(sleeper,0,0,ms); }
 function readSmall(file: string): unknown {
-  const fd = fs.openSync(file,'r');
+  let fd: number;
+  // A concurrent rename can briefly deny open on Windows; a missing file is returned to the caller as is.
+  for (let attempt=0;;attempt++) {
+    try { fd=fs.openSync(file,'r'); break; }
+    catch (error) { if (attempt>=2 || !transientCodes.has(String(codeOf(error)))) throw error; pause(2); }
+  }
   try {
     const stat=fs.fstatSync(fd);
     if (!stat.isFile() || stat.size > RUNTIME_LIMITS.fileBytes) return undefined;
@@ -65,18 +78,52 @@ function readSmall(file: string): unknown {
     return JSON.parse(bytes.subarray(0,count).toString('utf8'));
   } finally { fs.closeSync(fd); }
 }
-function lease(storage: string): Lease | undefined {
-  try {
-    const value = readSmall(path.join(storage,'runtime','observer.json')) as Lease;
-    const age = Date.now() - value.observedAt;
-    if (value.version === 1 && uuid.test(value.leaseId) && Number.isFinite(age) && age >= -1000 && age < RUNTIME_LIMITS.leaseMs) return value;
-  } catch { /* Observation is always fail-open. */ }
-  return undefined;
+/**
+ * `definitive` means the dashboard's answer is known: a parsed lease, or no lease file at all (the dashboard stopped).
+ * A file that exists but cannot be read or parsed right now (sharing violation, torn write) is only "unknown".
+ */
+function readLease(storage: string): { lease?: Lease; definitive: boolean } {
+  let value: Lease;
+  try { value = readSmall(path.join(storage,'runtime','observer.json')) as Lease; }
+  catch (error) { return { definitive: codeOf(error)==='ENOENT' }; }
+  if (!value || typeof value !== 'object') return { definitive: false };
+  const age = Date.now() - value.observedAt;
+  if (value.version === 1 && uuid.test(value.leaseId) && Number.isFinite(age) && age >= -1000 && age < RUNTIME_LIMITS.leaseMs) return { lease: value, definitive: true };
+  return { definitive: true };
 }
-function writeSmall(file: string, value: unknown, flag: 'w'|'wx' = 'w'): void {
-  const encoded = JSON.stringify(value);
+function lease(storage: string): Lease | undefined { return readLease(storage).lease; }
+/**
+ * Replace atomically so readers see the old or new file, never a truncated one. `exclusive` creates in place
+ * (a brand-new slot) and fails if the file exists. Windows may refuse the rename while a reader holds the target.
+ */
+function writeSmall(file: string, encoded: string, exclusive = false): void {
   if (Buffer.byteLength(encoded) > RUNTIME_LIMITS.fileBytes) throw new Error('Runtime metadata bound exceeded');
-  fs.writeFileSync(file,encoded,{flag,mode:0o600});
+  // EEXIST means the name belongs to someone else; any other failure may have left a partial file of ours behind.
+  const create = (target: string): void => {
+    try { fs.writeFileSync(target,encoded,{flag:'wx',mode:0o600}); }
+    catch (error) { if (codeOf(error)!=='EEXIST') try { fs.unlinkSync(target); } catch { /* fail-open */ } throw error; }
+  };
+  if (exclusive) { create(file); return; }
+  const temporary = path.join(path.dirname(file),`.tmp-${path.basename(file)}-${randomUUID().slice(0,8)}`);
+  create(temporary);
+  try {
+    for (let attempt=0;;attempt++) {
+      try { fs.renameSync(temporary,file); return; }
+      catch (error) { if (attempt>=4 || !transientCodes.has(String(codeOf(error)))) throw error; pause(2*(attempt+1)); }
+    }
+  } catch (error) { try { fs.unlinkSync(temporary); } catch { /* fail-open */ } throw error; }
+}
+const leaseText = (leaseId: string): string => JSON.stringify({version:1,leaseId,observedAt:Date.now()});
+/** Temp files only survive a crash between create and rename. `limit` bounds how many are examined (hooks sweep a few per claim). */
+function sweepTemporary(dir: string, limit = Infinity): void {
+  let examined = 0;
+  for (const name of fs.readdirSync(dir)) if (name.startsWith('.tmp-')) {
+    if (examined++ >= limit) return;
+    try {
+      const file = path.join(dir,name);
+      if (Date.now()-fs.statSync(file).mtimeMs>60_000) fs.unlinkSync(file);
+    } catch { /* fail-open */ }
+  }
 }
 
 /** A dashboard-owned lease. Losing or stopping it never affects capture. */
@@ -84,13 +131,21 @@ export function enableRuntime(storage: string): { leaseId: string; stop(): void 
   const leaseId = randomUUID();
   const file = path.join(storage,'runtime','observer.json');
   let stopped = false;
-  try { fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o700}); writeSmall(file,{version:1,leaseId,observedAt:Date.now()}); } catch { /* fail-open */ }
+  try { fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o700}); sweepTemporary(path.dirname(file)); writeSmall(file,leaseText(leaseId)); } catch { /* fail-open */ }
   const timer = setInterval(() => {
     if (stopped) return;
     try {
-      const current = readSmall(file) as Lease;
-      if (current.leaseId !== leaseId) return;
-      writeSmall(file,{version:1,leaseId,observedAt:Date.now()});
+      let current: Lease | undefined;
+      try { current = readSmall(file) as Lease; }
+      catch (error) {
+        // A transient read failure skips this beat; a vanished or corrupt (unparseable) file is rewritten.
+        if (codeOf(error)==='ENOENT') fs.mkdirSync(path.dirname(file),{recursive:true,mode:0o700});
+        else if (!(error instanceof SyntaxError)) return;
+      }
+      // Only another dashboard's lease is respected; unusable content in the file we own is replaced.
+      const owner = current && typeof current==='object' ? current.leaseId : undefined;
+      if (typeof owner==='string' && owner !== leaseId) return;
+      writeSmall(file,leaseText(leaseId));
     } catch { /* No diagnostics retries in the host tool path. */ }
   },RUNTIME_LIMITS.heartbeatMs);
   timer.unref();
@@ -101,79 +156,130 @@ export function enableRuntime(storage: string): { leaseId: string; stop(): void 
   } };
 }
 
+type OperationContext = { scope: RuntimeScope; fallbacks: Set<RuntimeKind> };
+
 export class RuntimeObserver {
   readonly instanceId = randomUUID();
-  private readonly context = new AsyncLocalStorage<{scope:RuntimeScope;fallback:boolean}>();
+  private readonly context = new AsyncLocalStorage<OperationContext>();
   private state?: InstanceFile;
   private file?: string;
   private timer?: NodeJS.Timeout;
+  private pending?: NodeJS.Timeout;
   private closed = false;
   private scope?: RuntimeScope;
   private revision?: string;
   private deniedUntil = 0;
+  private leaseAt = 0;
+  private leaseSeen?: Lease;
+  private leaseOkAt = 0;
+  private ownedAt = 0;
+  private lastWrite = 0;
+  private readonly leaseCacheMs: number;
+  private readonly publishMs: number;
   constructor(private readonly storage: string, private readonly options: ObserverOptions = {}) {
     this.scope = cleanScope(options.scope); this.revision = identifier(options.configRevision);
+    this.leaseCacheMs = options.leaseCacheMs ?? RUNTIME_LIMITS.leaseCacheMs;
+    this.publishMs = options.publishMs ?? RUNTIME_LIMITS.publishMs;
     this.ensure();
+    // The beat survives a missing lease so an idle long-lived process appears when a dashboard starts later.
+    if (options.persistent !== false) { this.timer = setInterval(() => this.flush(),RUNTIME_LIMITS.heartbeatMs); this.timer.unref(); }
   }
   setScope(scope: RuntimeScope): void { this.scope = cleanScope(scope); if (this.state) this.state.scope = this.scope; this.publish(); }
   update(input: {configRevision?: string}): void {
     this.revision = identifier(input.configRevision); if (this.state) this.state.configRevision = this.revision; this.publish();
   }
   withScope<T>(scope: RuntimeScope, work: () => T): T {
-    const safe = cleanScope(scope); return safe ? this.context.run({scope:safe,fallback:false},work) : work();
+    const safe = cleanScope(scope); return safe ? this.context.run({scope:safe,fallbacks:new Set()},work) : work();
   }
-  /** Called only for the core's fixed 'model fallback' event name, never its fields. */
-  noteFallback(): void { const context=this.context.getStore();if(context)context.fallback=true; }
+  /** Called only for the core's fixed fallback event names (never their fields); marks the enclosing operations of `kind`. */
+  noteFallback(kind: RuntimeKind = 'score'): void { this.context.getStore()?.fallbacks.add(kind); }
+  /** The lease is cached briefly; a failed read is "unknown" and keeps the last good lease until it would have expired. */
+  private currentLease(fresh = false): Lease | undefined {
+    const now = Date.now();
+    if (!fresh && now-this.leaseAt<this.leaseCacheMs) return this.leaseSeen;
+    this.leaseAt = now;
+    const read = readLease(this.storage);
+    if (read.lease) { this.leaseSeen = read.lease; this.leaseOkAt = now; }
+    else if (read.definitive || now-this.leaseOkAt>=RUNTIME_LIMITS.leaseMs) this.leaseSeen = undefined;
+    return this.leaseSeen;
+  }
   private ensure(): boolean {
     if (this.closed || Date.now() < this.deniedUntil) return false;
-    const current = lease(this.storage);
-    if (!current) {
-      if (this.timer) {clearInterval(this.timer);this.timer=undefined;}
-      this.deniedUntil = Date.now()+250; return false;
-    }
-    if (this.state?.leaseId === current.leaseId && this.file) {this.startHeartbeat();return true;}
+    const current = this.currentLease();
+    if (!current) { this.deniedUntil = Date.now()+250; return false; }
+    if (this.state?.leaseId === current.leaseId && this.file) return true;
     const now = Date.now();
     const state: InstanceFile = {version:1,leaseId:current.leaseId,instanceId:this.instanceId,pid:process.pid,
       component:components.has(this.options.component ?? '') ? this.options.component! : 'manager',source:'runtime-file',
       startedAt:now,observedAt:now,scope:this.scope,configRevision:this.revision,activities:[],events:[],dropped:0};
-    // Exclusive-create empty slots first; recycle only stopped, expired or previous-lease metadata.
+    const file = this.claim(state,current,now);
+    if (!file) { this.deniedUntil = now+1000; return false; }
+    this.file = file; this.state = state; this.ownedAt = now; this.lastWrite = 0;
+    return true;
+  }
+  /** One bounded probe: take a never-used slot, or reclaim a stopped/expired/previous-lease one in place. */
+  private claim(state: InstanceFile, current: Lease, now: number): string | undefined {
+    const encoded = JSON.stringify(state);
     const start = Number.parseInt(this.instanceId.slice(0,8),16) % RUNTIME_LIMITS.slots;
-    try {
-      for (let pass=0;pass<2;pass++) for (let n=0;n<RUNTIME_LIMITS.slots;n++) {
-        const file = path.join(this.storage,'runtime',`slot-${String((start+n)%RUNTIME_LIMITS.slots).padStart(3,'0')}.json`);
-        if (pass === 0) {
-          try { writeSmall(file,state,'wx'); } catch { continue; }
-        } else {
-          try {
-            let old: InstanceFile | undefined;
-            try {old=readSmall(file) as InstanceFile;} catch {
-              // A crash can interrupt a diagnostics write. Reclaim it after
-              // the same stale interval, never during a fresh partial write.
-              if (now-fs.statSync(file).mtimeMs<RUNTIME_LIMITS.staleMs) continue;
-            }
-            if (old?.leaseId === current.leaseId && !old.stoppedAt && now-old.observedAt < RUNTIME_LIMITS.staleMs) continue;
-            writeSmall(file,state);
-          } catch { continue; }
-        }
-        this.file = file; this.state = state;
-        this.startHeartbeat();
-        return true;
-      }
-    } catch { /* Exhaustion/unavailable channel is not a capture error. */ }
-    this.deniedUntil = now+250; return false;
-  }
-  private startHeartbeat(): void {
-    if (this.options.persistent !== false && !this.timer) {
-      this.timer=setInterval(()=>this.publish(),RUNTIME_LIMITS.heartbeatMs);this.timer.unref();
+    // Bounds disk use without a dashboard restart: orphans from killed hooks are removed a few at a time.
+    try { sweepTemporary(path.join(this.storage,'runtime'),8); } catch { /* fail-open */ }
+    for (let n=0;n<RUNTIME_LIMITS.probes;n++) {
+      const file = path.join(this.storage,'runtime',`slot-${String((start+n)%RUNTIME_LIMITS.slots).padStart(3,'0')}.json`);
+      try {
+        let old: InstanceFile | undefined, missing = false, unreadable = false;
+        try { old = readSmall(file) as InstanceFile | undefined; unreadable = !old; }
+        catch (error) { missing = codeOf(error)==='ENOENT'; unreadable = !missing; }
+        if (unreadable) {
+          // A crash can interrupt a diagnostics write. Reclaim it after the same stale interval, never a fresh partial write.
+          const stat = fs.statSync(file);
+          if (!stat.isFile() || now-stat.mtimeMs<RUNTIME_LIMITS.staleMs) continue;
+        } else if (old && old.leaseId === current.leaseId && !old.stoppedAt && now-old.observedAt < RUNTIME_LIMITS.staleMs) continue;
+        writeSmall(file,encoded,missing);
+        // Two claimants can race for the same reclaimable slot; the last writer wins and the other keeps probing.
+        if ((readSmall(file) as InstanceFile).instanceId !== this.instanceId) continue;
+        return file;
+      } catch { continue; }
     }
+    return undefined;
   }
+  /** Coalesces bursts: at most one write per publishMs, the rest ride an unref'd trailing timer. */
   private publish(): void {
+    const wait = this.publishMs-(Date.now()-this.lastWrite);
+    if (wait <= 0) { this.flush(); return; }
+    if (!this.pending && !this.closed) { this.pending = setTimeout(() => { this.pending = undefined; this.flush(); },wait); this.pending.unref(); }
+  }
+  /** Writes the current state now (heartbeat, final write of a short-lived process). */
+  flush(): void {
+    if (this.pending) { clearTimeout(this.pending); this.pending = undefined; }
+    this.lastWrite = Date.now();
     try {
       if (!this.ensure() || !this.state || !this.file) return;
-      // A stalled process must never resurrect metadata after its slot was recycled.
-      if ((readSmall(this.file) as InstanceFile).instanceId !== this.instanceId) { this.file=undefined; this.state=undefined; return; }
-      this.state.observedAt = Date.now(); writeSmall(this.file,this.state);
+      const now = Date.now();
+      if (now-this.ownedAt >= this.leaseCacheMs) {
+        // A stalled process must never resurrect metadata after its slot was recycled.
+        if ((readSmall(this.file) as InstanceFile).instanceId !== this.instanceId) { this.file=undefined; this.state=undefined; return; }
+        this.ownedAt = now;
+      }
+      this.state.observedAt = now; writeSmall(this.file,this.fit());
     } catch { /* Never expose or persist the raw filesystem error. */ }
+  }
+  /** Sheds oldest events, then oldest activities, until the file fits its documented bound. */
+  private fit(): string {
+    const state = this.state!;
+    for (;;) {
+      const encoded = JSON.stringify(state), size = Buffer.byteLength(encoded);
+      if (size <= RUNTIME_LIMITS.fileBytes) return encoded;
+      let excess = size-RUNTIME_LIMITS.fileBytes;
+      while (excess > 0) {
+        const list = state.events.length ? state.events : state.activities;
+        if (!list.length) throw new Error('Runtime metadata bound exceeded');
+        excess -= Buffer.byteLength(JSON.stringify(list.shift()))+1; state.dropped++;
+      }
+    }
+  }
+  /** A short-lived process cannot rely on a later timer, so its outermost operation end writes immediately. */
+  private settle(): void {
+    if (this.options.persistent === false && this.state && !this.state.activities.length) this.flush(); else this.publish();
   }
   operation(input: OperationInput): (result?: OperationResult) => void {
     let activity: RuntimeActivity | undefined;
@@ -185,9 +291,6 @@ export class RuntimeObserver {
       const now = Date.now();
       activity = {...safe,id:randomUUID(),instanceId:this.instanceId,source:'runtime-file',observedAt:now,startedAt:now};
       this.state.activities.push(activity); this.event({...activity,phase:'start'});
-      if (Buffer.byteLength(JSON.stringify(this.state))>RUNTIME_LIMITS.fileBytes) {
-        this.state.activities.pop(); this.state.dropped++; this.publish(); return () => {};
-      }
       this.publish();
     } catch { return () => {}; }
     let ended = false;
@@ -199,9 +302,9 @@ export class RuntimeObserver {
         const endedAt = Date.now();
         const extra = metadata({...activity,...result});
         this.event({...activity,...extra,phase:'end',observedAt:endedAt,endedAt,durationMs:Math.max(0,endedAt-activity.startedAt),
-          status:activity.kind==='score' && context?.fallback && (!result.status || result.status==='ok') ? 'fallback' :
+          status:context?.fallbacks.has(activity.kind) && (!result.status || result.status==='ok') ? 'fallback' :
             statuses.has(result.status ?? '') ? result.status : 'ok'});
-        this.publish();
+        this.settle();
       } catch { /* fail-open */ }
     };
   }
@@ -209,22 +312,22 @@ export class RuntimeObserver {
     if (!this.state) return;
     this.state.events.push(event);
     if (this.state.events.length>RUNTIME_LIMITS.events) {this.state.events.shift(); this.state.dropped++;}
-    // Large workspace metadata can hit the byte bound before the entry count bound.
-    while (Buffer.byteLength(JSON.stringify(this.state))>RUNTIME_LIMITS.fileBytes && this.state.events.length) {
-      this.state.events.shift(); this.state.dropped++;
-    }
   }
   close(): void {
     if (this.closed) return;
     this.closed = true;
     if (this.timer) {clearInterval(this.timer);this.timer=undefined;}
+    if (this.pending) {clearTimeout(this.pending);this.pending=undefined;}
     try {
-      // Closing an old instance cannot create a fresh-looking entry in a new lease.
-      if (this.state && this.file && lease(this.storage)?.leaseId===this.state.leaseId &&
-          (readSmall(this.file) as InstanceFile).instanceId===this.instanceId) {
-        this.state.stoppedAt=Date.now();this.state.observedAt=this.state.stoppedAt;this.state.activities=[];
-        writeSmall(this.file,this.state);
-      }
+      if (!this.state || !this.file) return;
+      // Closing an old instance cannot create a fresh-looking entry in a new lease. An unreadable or expired
+      // lease says nothing about slot ownership, so the stopped marker is still attempted.
+      const current = this.currentLease(true);
+      if (current && current.leaseId !== this.state.leaseId) return;
+      try { if ((readSmall(this.file) as InstanceFile).instanceId !== this.instanceId) return; }
+      catch { /* Unknown ownership: reclaiming needs 15 s of silence, so this slot is still ours. */ }
+      this.state.stoppedAt = this.state.observedAt = Date.now(); this.state.activities = [];
+      writeSmall(this.file,this.fit());
     } catch { /* fail-open */ }
   }
 }
