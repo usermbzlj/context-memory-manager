@@ -29,7 +29,6 @@ Default retention has no deletion deadline. Explicit GC retires metadata before 
 
 - Codex native capture closure after the user re-trusts the modified hook.
 - Real-model Kimi, Claude and OpenCode (Bun host) sessions on Windows with each exact agent version.
-- First real remote CI run; CI configuration is not a completed run.
 - Task quality and context-token/cost effect of history projection and of native/remote scoring,
   before marketing any savings number.
 - User browser acceptance of the dashboard.

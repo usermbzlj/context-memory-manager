@@ -45,8 +45,25 @@
 - Duplicate captures do not rewrite provenance unless the merge changes it.
 - `.build/` private build directories are ignored by Git.
 
+### Cross-platform fixes found by remote CI (2026-10-10)
+
+- Node floor raised to **22.16.0**: earlier Node 22 `node:sqlite` builds lack FTS5, so the old
+  `>=22.13.0` claim never held. The CLI refuses older versions with that reason.
+- The CLI and demo run when launched through a symlinked path (macOS `/var`, npm links); before,
+  `--help` printed nothing there.
+- CMM processes suppress only Node 22's `node:sqlite` ExperimentalWarning, so hooks leave the
+  host's stderr empty.
+- Provider deadlines use ref'd timers that hold their controller strongly and are cleared when
+  the request ends; the reply body is cancelled directly on expiry. On Node 22, garbage
+  collection could drop the weakly held `AbortSignal.timeout()` link and a mid-body stall waited
+  about 300 s (undici's default) instead of the deadline.
+- Opening a new database retries `SQLITE_BUSY` while switching to WAL, which SQLite can return
+  without consulting `busy_timeout` when several processes create the same database at once.
+
 Schema/source version unchanged; local RC, not published. Validation is recorded in
-`docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite: 302 tests, 301 pass, 0 fail, 1 Windows file-symlink skip.
+`docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite: 308 tests, 307 pass, 0 fail, 1 Windows
+file-symlink skip (Node 24.19.0); the same build also passes on Node 22.16.0. Remote CI run
+37968216772 passed on Ubuntu, Windows and macOS with Node 22.16.0, 22, 24 and 26.
 
 ## 0.3.0-rc.2 Windows hook and evidence repairs - 2026-10-08
 

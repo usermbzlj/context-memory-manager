@@ -12,7 +12,9 @@ local loopback servers only; no private archive, paid model, host trust change o
 | Executed check | Actual result |
 | --- | --- |
 | Starting snapshot (2026-10-09 source) | `npm test`: 229 tests, 227 pass, **1 fail**, 1 skip. Failure: cross-process configuration writers, `EPERM` creating `config.write.lock` |
-| Final clean source suite | `npm test`: **302 tests, 18 suites; 301 pass, 0 fail, 1 Windows file-symlink skip**, exit 0 |
+| Final clean source suite | `npm test`: **308 tests, 18 suites; 307 pass, 0 fail, 1 Windows file-symlink skip**, exit 0 |
+| Same build on Node 22.16.0 | `node --test dist/tests/*.test.js` on Windows: 308 tests, 306 pass, 0 fail, 2 skips (Windows file symlink; this Node build ignores `NODE_USE_ENV_PROXY`) |
+| Remote CI | [Run 37968216772](https://github.com/usermbzlj/context-memory-manager/actions/runs/37968216772) on commit `39b36e6`: all 12 jobs pass (Ubuntu, Windows, macOS × Node 22.16.0, 22, 24, 26), including `npm test` and `npm run test:pack` |
 | Configuration writers | Cross-process concurrency and lock-recovery files repeated 10 times: 10/10 pass. Dead same-host holder recovered; live, foreign-host, unreadable and older-format locks refused with bytes unchanged; release never removes a lock it does not own |
 | Offline distributable | `npm run test:pack`: actual tarball installs offline; dashboard assets/auth and exact download, generated hook capture and fail-open, setup/uninstall, MCP handshake and demo pass |
 | Windows smoke | `scripts/windows-smoke.ps1` passes under PowerShell 5.1 and 7 with the default 936 console code page; liveAgentTested=false |
@@ -24,11 +26,28 @@ The smoke script previously decoded CLI output with the console code page, so on
 the exact Unicode comparison failed even though the archived bytes were correct (rerun with a UTF-8
 console passed). The script now sets UTF-8 output for its own run and restores the previous encoding.
 
+The first remote CI runs (2026-10-07 run 37593793068, then 37963602794 on this round's first push)
+failed; the failures were real and are fixed:
+
+- Node 22.13.0: 213 tests failed with `no such module: fts5`. FTS5 arrived in Node 22's
+  `node:sqlite` with 22.16.0, so the supported floor and the CI matrix are now 22.16.0.
+- macOS: `test:pack` saw empty `--help` output. `/var` is a symlink there, so the entry-point
+  check compared different paths; it now also compares real paths.
+- Node 22: hook stderr tests saw the `node:sqlite` ExperimentalWarning; CMM processes now
+  suppress only that warning. Failover tests were cancelled because `AbortSignal.timeout()` is
+  unref'd; deadlines now use ref'd timers that are cleared.
+- Later pushes exposed two intermittent macOS failures. A writer got `database is locked` while
+  three processes created one database (now retried with a bound). A stalled reply body waited
+  303 s on Node 22.16.0: after garbage collection the weakly held timeout signal no longer reached
+  `fetch`. The new GC regression test reproduces the hang locally on Node 22.16.0 for all three
+  fetch-based providers before the fix and passes after it; the WAL retry is verified only by CI.
+
 Logs: `windows-2026-10-10-baseline-tests.txt`, `windows-2026-10-10-tests.txt`,
-`windows-2026-10-10-package.txt`, `windows-2026-10-10-smoke-ps5.txt` and
-`windows-2026-10-10-smoke-ps7.txt` under `docs/validation` (local paths replaced by placeholders).
-The dashboard was not exercised in a browser in this round. Codex native capture after hook
-re-trust, real-model hosts, remote CI and task-quality/token/cost gates remain open.
+`windows-2026-10-10-tests-node22.16.txt`, `windows-2026-10-10-package.txt`,
+`windows-2026-10-10-smoke-ps5.txt` and `windows-2026-10-10-smoke-ps7.txt` under `docs/validation`
+(local paths replaced by placeholders). One green CI run is not a flakiness guarantee. The dashboard
+was not exercised in a browser in this round. Codex native capture after hook re-trust, real-model
+hosts and task-quality/token/cost gates remain open.
 
 ## Windows local dashboard: 2026-10-09
 
