@@ -2,6 +2,7 @@ import type { BatchScoreItem, Logger, ModelProvider, ProviderCallRecord, Retenti
 import { completeWithFailover, FAILOVER_DEADLINE_MS } from '../providers/failover.js';
 import type { AbortableRequest } from '../providers/provider.js';
 import { estimateTokens } from '../descriptor.js';
+import { createDeadline } from '../util/deadline.js';
 
 function requestFor(items: BatchScoreItem[]) {
   const events = items.map(({ event, ctx }, index) => ({
@@ -54,31 +55,34 @@ export class SystemOneScorer implements RetentionScorer {
     if (items.length > 24) throw new Error('systemone: scoring batch exceeds 24 events');
     const deadlineMs = this.opts.deadlineMs ?? SCORING_DEADLINE_MS;
     // Aborts in-flight HTTP work; on expiry the whole batch throws and the engine falls back conservatively.
-    const signal = AbortSignal.timeout(deadlineMs);
+    const deadline = createDeadline(deadlineMs, () => new Error('systemone: scoring deadline exceeded'));
+    const { signal } = deadline;
     const scores: number[] = [];
-    for (let offset = 0; offset < items.length;) {
-      const group: BatchScoreItem[] = [];
-      let user = '';
-      while (offset + group.length < items.length && group.length < 8) {
-        const next = [...group, items[offset + group.length]];
-        const candidate = requestFor(next);
-        // Leave room for the native question template in the deployed 4K context.
-        // This is an estimate; actual over-limit HTTP errors still trigger conservative fallback.
-        if (estimateTokens(candidate) > 2600) {
-          if (group.length === 0) throw new Error('systemone: descriptor exceeds the decision input budget');
-          break;
+    try {
+      for (let offset = 0; offset < items.length;) {
+        const group: BatchScoreItem[] = [];
+        let user = '';
+        while (offset + group.length < items.length && group.length < 8) {
+          const next = [...group, items[offset + group.length]];
+          const candidate = requestFor(next);
+          // Leave room for the native question template in the deployed 4K context.
+          // This is an estimate; actual over-limit HTTP errors still trigger conservative fallback.
+          if (estimateTokens(candidate) > 2600) {
+            if (group.length === 0) throw new Error('systemone: descriptor exceeds the decision input budget');
+            break;
+          }
+          group.push(items[offset + group.length]);
+          user = candidate;
         }
-        group.push(items[offset + group.length]);
-        user = candidate;
+        const request: AbortableRequest = { user, timeoutMs: Math.min(30000, deadlineMs), signal };
+        const result = await completeWithFailover(this.opts.providers, request, {
+          purpose: 'retention', deadlineMs, recordCall: this.opts.recordCall, logger: this.opts.logger,
+          validate: response => { scoresFrom(response.text, group.length); },
+        });
+        scores.push(...scoresFrom(result.text, group.length));
+        offset += group.length;
       }
-      const request: AbortableRequest = { user, timeoutMs: Math.min(30000, deadlineMs), signal };
-      const result = await completeWithFailover(this.opts.providers, request, {
-        purpose: 'retention', deadlineMs, recordCall: this.opts.recordCall, logger: this.opts.logger,
-        validate: response => { scoresFrom(response.text, group.length); },
-      });
-      scores.push(...scoresFrom(result.text, group.length));
-      offset += group.length;
-    }
+    } finally { deadline.clear(); }
     return scores;
   }
 }

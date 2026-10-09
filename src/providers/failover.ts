@@ -17,6 +17,7 @@ import type {
 import { ProviderError, type AbortableRequest } from './provider.js';
 import { errorMessage } from '../util/validation.js';
 import { redact } from '../logging.js';
+import { createDeadline, whenAborted } from '../util/deadline.js';
 
 export type ProviderAttemptObserver = (attempt: {purpose: 'retention'|'capsule'|'chain';provider: string}) =>
   ((result: {status: 'ok'|'error'; model?: string}) => void);
@@ -31,25 +32,7 @@ export function observeProvider(provider: ModelProvider, observer: ProviderAttem
  */
 export const FAILOVER_DEADLINE_MS = Object.freeze({ retention: 20_000, capsule: 45_000, chain: 20_000 });
 
-function whenAborted(signal: AbortSignal): { promise: Promise<never>; release(): void } {
-  let onAbort: () => void = () => {};
-  const promise = new Promise<never>((_, reject) => {
-    onAbort = () => reject(new ProviderError('overall provider deadline exceeded or cancelled'));
-    if (signal.aborted) onAbort(); else signal.addEventListener('abort', onAbort, { once: true });
-  });
-  promise.catch(() => {});
-  return { promise, release: () => signal.removeEventListener('abort', onAbort) };
-}
-
-/**
- * AbortSignal.timeout() is unref'd: a provider that never settles and holds no I/O would let the
- * event loop drain mid-call. This timer keeps the process alive until the deadline and must be cleared.
- */
-function deadlineSignal(ms: number): { signal: AbortSignal; clear(): void } {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(new ProviderError('overall provider deadline exceeded')), ms);
-  return { signal: controller.signal, clear: () => clearTimeout(timer) };
-}
+const exceeded = () => new ProviderError('overall provider deadline exceeded or cancelled');
 
 export async function completeWithFailover(
   providers: ModelProvider[],
@@ -71,9 +54,8 @@ export async function completeWithFailover(
   let lastError: unknown = null;
   const budget = opts.deadlineMs ?? FAILOVER_DEADLINE_MS[purpose];
   const endsAt = Date.now() + budget;
-  const deadline = deadlineSignal(budget);
-  const caller = (req as AbortableRequest).signal;
-  const signal = caller ? AbortSignal.any([deadline.signal, caller]) : deadline.signal;
+  const deadline = createDeadline(budget, exceeded, (req as AbortableRequest).signal);
+  const signal = deadline.signal;
 
   try {
     for (let i = 0; i < providers.length; i++) {
@@ -81,8 +63,8 @@ export async function completeWithFailover(
       if (signal.aborted) { lastError = new ProviderError('overall provider deadline exceeded or cancelled'); break; }
       // A stalled provider may use only its share of what is left, so later providers still get a turn.
       const share = Math.max(1, Math.floor((endsAt - Date.now()) / (providers.length - i)));
-      const attemptDeadline = deadlineSignal(Math.min(req.timeoutMs && req.timeoutMs > 0 ? req.timeoutMs : Infinity, share));
-      const attemptSignal = AbortSignal.any([signal, attemptDeadline.signal]);
+      const attemptDeadline = createDeadline(Math.min(req.timeoutMs && req.timeoutMs > 0 ? req.timeoutMs : Infinity, share), exceeded, signal);
+      const attemptSignal = attemptDeadline.signal;
       let received: CompletionResponse | undefined;
       let attemptOk = false;
       let end: ReturnType<ProviderAttemptObserver> | undefined;
@@ -90,7 +72,7 @@ export async function completeWithFailover(
       try {
         // Providers get the attempt signal to abort real I/O; the race also bounds providers that ignore it.
         const attempt: AbortableRequest = { ...req, signal: attemptSignal };
-        const aborted = whenAborted(attemptSignal);
+        const aborted = whenAborted(attemptSignal, exceeded);
         let res: CompletionResponse;
         try { res = received = await Promise.race([p.complete(attempt), aborted.promise]); } finally { aborted.release(); }
         opts.validate?.(res);

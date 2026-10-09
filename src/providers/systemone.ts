@@ -2,7 +2,7 @@
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import type { CompletionRequest, CompletionResponse, ModelProvider, ProviderConfig } from '../types.js';
-import { ProviderError, requestSignal } from './provider.js';
+import { ProviderError, requestDeadline } from './provider.js';
 import { cleartextRemote } from '../config.js';
 
 const MAX_NATIVE_RESPONSE_BYTES = 256 * 1024;
@@ -26,7 +26,8 @@ export class SystemOneProvider implements ModelProvider {
       throw new ProviderError(`${this.name}: expected state and questions`);
     }
     const body = JSON.stringify({ ...payload, model: this.cfg.model });
-    const signal = requestSignal(req);
+    const deadline = requestDeadline(req);
+    const { signal } = deadline;
     // `agent: false` uses a fresh, proxy-less agent. Node 24 routes the default global agent (and fetch)
     // through HTTP_PROXY/HTTPS_PROXY when NODE_USE_ENV_PROXY=1 or --use-env-proxy is set, even for
     // loopback; archive-derived decision requests must reach the configured endpoint directly.
@@ -61,7 +62,7 @@ export class SystemOneProvider implements ModelProvider {
       });
       call.on('error', () => fail(signal.aborted ? 'decision request timed out or was cancelled' : 'decision request failed'));
       call.end(body);
-    });
+    }).finally(() => deadline.clear());
     let data: { usage?: { input_tokens?: number; output_tokens?: number }; model?: string };
     try { data = JSON.parse(text); }
     catch { throw new ProviderError(`${this.name}: invalid decision JSON (body omitted)`); }

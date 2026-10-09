@@ -9,7 +9,7 @@ import type {
   ModelProvider,
   ProviderConfig,
 } from '../types.js';
-import { ProviderError, postJson, requestSignal } from './provider.js';
+import { ProviderError, postJson } from './provider.js';
 
 export class GeminiProvider implements ModelProvider {
   readonly name: string;
@@ -41,7 +41,7 @@ export class GeminiProvider implements ModelProvider {
           ? { generationConfig: { responseMimeType: 'application/json' } }
           : {}),
       }),
-      signal: requestSignal(req),
+      request: req,
     })) as {
       candidates?: Array<{
         content?: { parts?: Array<{ text?: string }> };

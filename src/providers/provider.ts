@@ -5,6 +5,7 @@
 
 import type { CompletionRequest } from '../types.js';
 import { cleartextRemote } from '../config.js';
+import { createDeadline, whenAborted, type Deadline } from '../util/deadline.js';
 
 /** Thrown for provider-side problems: missing key, HTTP error, bad payload. */
 export class ProviderError extends Error {
@@ -23,11 +24,9 @@ export const MAX_RESPONSE_BYTES = 1024 * 1024;
  */
 export type AbortableRequest = CompletionRequest & { signal?: AbortSignal };
 
-/** Per-attempt timeout combined with the caller's overall signal, if any. */
-export function requestSignal(req: CompletionRequest, defaultMs = 30000): AbortSignal {
-  const timeout = AbortSignal.timeout(req.timeoutMs ?? defaultMs);
-  const outer = (req as AbortableRequest).signal;
-  return outer ? AbortSignal.any([timeout, outer]) : timeout;
+/** Per-attempt timeout combined with the caller's overall signal, if any. Call clear() when done. */
+export function requestDeadline(req: CompletionRequest, defaultMs = 30000): Deadline {
+  return createDeadline(req.timeoutMs ?? defaultMs, () => new ProviderError('request timed out'), (req as AbortableRequest).signal);
 }
 
 /** Only fixed text: transport errors can echo URLs, headers or bodies. */
@@ -47,11 +46,17 @@ async function readCapped(name: string, res: Response, signal: AbortSignal): Pro
   }
   const chunks: Uint8Array[] = [];
   let total = 0;
+  const reader = res.body?.getReader();
+  if (!reader) return '';
+  // Cancel the body directly: fetch may no longer forward the signal once headers have arrived.
+  const onAbort = () => { reader.cancel().catch(() => {}); };
+  signal.addEventListener('abort', onAbort, { once: true });
   try {
-    const reader = res.body?.getReader();
     for (;;) {
-      const next = await reader?.read();
-      if (!reader || !next || next.done) break;
+      if (signal.aborted) throw signal.reason;
+      const next = await reader.read();
+      if (signal.aborted) throw signal.reason;
+      if (next.done) break;
       total += next.value.byteLength;
       if (total > MAX_RESPONSE_BYTES) {
         await reader.cancel().catch(() => {});
@@ -59,7 +64,10 @@ async function readCapped(name: string, res: Response, signal: AbortSignal): Pro
       }
       chunks.push(next.value);
     }
-  } catch (error) { throw transportError(name, error, signal); }
+  } catch (error) {
+    if (error instanceof ProviderError && !signal.aborted) throw error;
+    throw transportError(name, signal.aborted ? undefined : error, signal);
+  } finally { signal.removeEventListener('abort', onAbort); }
   return Buffer.concat(chunks).toString('utf8');
 }
 
@@ -69,19 +77,27 @@ async function readCapped(name: string, res: Response, signal: AbortSignal): Pro
  * capped, and no response body ever reaches an error message.
  */
 export async function postJson(name: string, url: string,
-  init: { headers: Record<string, string>; body: string; signal: AbortSignal }): Promise<unknown> {
+  init: { headers: Record<string, string>; body: string; request: CompletionRequest }): Promise<unknown> {
   const credentialed = Object.keys(init.headers).some(h => /^(authorization|x-api-key)$/i.test(h)) || new URL(url).searchParams.has('key');
   if (credentialed && cleartextRemote(url)) throw new ProviderError(`${name}: credential refused over plain http to a non-loopback host`);
-  let res: Response;
+  const deadline = requestDeadline(init.request);
+  const { signal } = deadline;
   try {
-    res = await fetch(url, { method: 'POST', headers: init.headers, body: init.body, redirect: 'error', signal: init.signal });
-  } catch (error) { throw transportError(name, error, init.signal); }
-  if (!res.ok) {
-    // Error bodies can echo prompts and credentials. Keep only the status.
-    await res.body?.cancel().catch(() => {});
-    throw new ProviderError(`${name}: HTTP ${res.status} (response body omitted)`);
-  }
-  const text = await readCapped(name, res, init.signal);
-  try { return JSON.parse(text); }
-  catch { throw new ProviderError(`${name}: invalid response JSON (body omitted)`); }
+    let res: Response;
+    const pending = fetch(url, { method: 'POST', headers: init.headers, body: init.body, redirect: 'error', signal });
+    const aborted = whenAborted(signal, () => new ProviderError(`${name}: request timed out or was cancelled`));
+    try { res = await Promise.race([pending, aborted.promise]); }
+    catch (error) {
+      pending.then(late => late.body?.cancel().catch(() => {}), () => {});
+      throw transportError(name, error, signal);
+    } finally { aborted.release(); }
+    if (!res.ok) {
+      // Error bodies can echo prompts and credentials. Keep only the status.
+      await res.body?.cancel().catch(() => {});
+      throw new ProviderError(`${name}: HTTP ${res.status} (response body omitted)`);
+    }
+    const text = await readCapped(name, res, signal);
+    try { return JSON.parse(text); }
+    catch { throw new ProviderError(`${name}: invalid response JSON (body omitted)`); }
+  } finally { deadline.clear(); }
 }

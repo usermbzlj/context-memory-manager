@@ -8,7 +8,7 @@ import type {
   ModelProvider,
   ProviderConfig,
 } from '../types.js';
-import { ProviderError, postJson, requestSignal } from './provider.js';
+import { ProviderError, postJson } from './provider.js';
 
 export class OpenAICompatibleProvider implements ModelProvider {
   readonly name: string;
@@ -41,7 +41,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
         ...(req.jsonMode ? { response_format: { type: 'json_object' } } : {}),
         ...(req.maxTokens ? { max_tokens: req.maxTokens } : {}),
       }),
-      signal: requestSignal(req),
+      request: req,
     })) as {
       choices?: Array<{ message?: { content?: string } }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };

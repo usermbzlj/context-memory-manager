@@ -8,7 +8,7 @@ import type {
   ModelProvider,
   ProviderConfig,
 } from '../types.js';
-import { ProviderError, postJson, requestSignal } from './provider.js';
+import { ProviderError, postJson } from './provider.js';
 
 export class AnthropicProvider implements ModelProvider {
   readonly name: string;
@@ -38,7 +38,7 @@ export class AnthropicProvider implements ModelProvider {
         ...(req.system ? { system: req.system } : {}),
         messages: [{ role: 'user', content: req.user }],
       }),
-      signal: requestSignal(req),
+      request: req,
     })) as {
       content?: Array<{ type?: string; text?: string }>;
       usage?: { input_tokens?: number; output_tokens?: number };
