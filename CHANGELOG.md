@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.3.0-rc.2 dashboard, native scoring and hardening - 2026-10-10
+
+### Added (2026-10-09)
+
+- `cmm dashboard`: local loopback management UI (React/Vite, build-time-only dependencies) with
+  a management service, realtime view, scoped evidence search/download, sessions/chains, provider
+  configuration and ledger, strategies and cancellable maintenance. See `docs/DASHBOARD.md`.
+- Bounded runtime observation under storage `runtime/` (lease + up to 128 slot files): lossy
+  diagnostics, never evidence.
+- Native `systemone` retention scorer/provider for a local decision server.
+- `reasoningEffort` for `openai-compatible` providers. DeepSeek was used only for capsule/chain
+  in validation.
+- `npm run test:pack` now builds first instead of trusting an existing `dist`.
+
+### Hardening (2026-10-10)
+
+- Dashboard: session cookie is `cmm_session_<port>`; Ctrl+C/stdin EOF waits for the SQLite worker
+  (5 s grace, second Ctrl+C exits 130) and an unexpected worker exit prints a message and exits 1;
+  downloads are fetched in-page with inline errors and limits (32 MiB per field, 64 MiB per
+  event); specific API error codes (`CONFIG_CONFLICT`, `CONFIG_BUSY`, `MAINTENANCE_RUNNING`,
+  `NOT_FOUND`, `SIZE_LIMIT`, `INVALID_*`) with 413/415 for oversized/non-JSON bodies; pagination
+  cursors survive a settings save; diagnostics poll only during maintenance.
+  `scripts/start-dashboard.ps1` added for source checkouts.
+- Configuration: writer lock records `{pid, hostname, createdAt}`; a dead same-host holder is
+  recovered, anything else is refused by name; Windows sharing errors retry; a UTF-8 BOM is
+  tolerated. Reclaim is serialized and a writer only removes a lock it still owns; a save whose
+  lock could not be removed is adopted with a warning. Added or changed providers with
+  credentials must use https except loopback; older violating entries still load and survive
+  unrelated saves, but never send credentials in cleartext. Changing a provider URL origin
+  requires replacing/deleting its key; model-only edits keep the URL query.
+- Providers/scoring: fetch-based providers refuse redirects and cap replies at 1 MiB; native
+  `systemone` caps at 256 KiB, requires HTTP 200 and ignores proxy environment. One overall
+  deadline per batch (retention 20 s, capsule 45 s, chain 20 s), shared across failover attempts,
+  with conservative fallback; errors carry fixed text only.
+- Runtime observation: temp-file + rename slot writes, publish throttle of about 250 ms, long
+  workspace ids shown as `sha256:<hex>`, stale temporary files swept and a corrupt lease repaired.
+  Timed-out maintenance acknowledgements are released after 5 minutes.
+- Codex Windows hooks also double typographic single quotes (U+2018 to U+201B) for PowerShell
+  5.1/7.
+- `verify` ignores events retired by GC during the run; real corruption is still reported.
+- A history batch rechecks provenance and result hash at commit; evidence that became
+  partial/filtered is not projected.
+- Duplicate captures do not rewrite provenance unless the merge changes it.
+- `.build/` private build directories are ignored by Git.
+
+Schema/source version unchanged; local RC, not published. Validation is recorded in
+`docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite: 302 tests, 301 pass, 0 fail, 1 Windows file-symlink skip.
+
 ## 0.3.0-rc.2 Windows hook and evidence repairs - 2026-10-08
 
 - Codex Windows setup uses PowerShell's call operator and literal quoting. Re-running setup

@@ -17,6 +17,10 @@ $kimiBefore = "default_model = `"fixture`"`n"
 [IO.File]::WriteAllText($kimiConfig, $kimiBefore)
 $previousKimiHome = $env:KIMI_CODE_HOME
 $env:KIMI_CODE_HOME = $kimiHome
+# Native output is decoded with the console code page (936 on Chinese Windows), which would
+# corrupt non-ASCII evidence before the exact comparison.
+$previousOutputEncoding = [Console]::OutputEncoding
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 function Invoke-Cmm {
     param([string[]]$Arguments)
     $captured = & $Node $cli @Arguments
@@ -90,6 +94,7 @@ try {
     [ordered]@{ cli = $cli; node = (& $Node --version); isolatedCLI = $true; pathsWithSpaces = $true; demo = $demo; setupAndUninstall = $true; generatedHookCapture = $true; liveAgentTested = $false } | ConvertTo-Json -Depth 8
 } finally {
     $env:KIMI_CODE_HOME = $previousKimiHome
+    [Console]::OutputEncoding = $previousOutputEncoding
     # Only the generated, disposable directory is removed. No personal configuration is touched.
     if (-not $cleanupSafe) {
         Write-Warning "Child closure unconfirmed; temporary directory retained: $root"

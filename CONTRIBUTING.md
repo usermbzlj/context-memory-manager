@@ -17,5 +17,11 @@ Preserve original tool data before changing visibility. Never alter a user messa
 prose, permissions, approval policy, or a native tool invocation. Do not retry side-effecting
 tools on a timeout. A candidate excerpt is not a tokenizer measurement or proof of billing savings.
 
-Keep fixes small and demonstrated. Avoid adding dashboards, accounts, mandatory models,
-vector databases or generic frameworks unless a reproducible user problem requires them.
+Keep fixes small and demonstrated. The existing local dashboard is in scope; new product surface
+there or elsewhere needs evidence of a reproducible user problem. Avoid accounts, mandatory
+models, vector databases or generic frameworks.
+
+`npm test` and `npm run build` include the Vite web build, so they need devDependencies
+(`npm ci`, not a production-only install). For parallel work, an isolated build is possible with
+`npx tsc --outDir .build/<name>` plus `vite build --outDir` to a matching directory; `.build/` is
+ignored by Git.

@@ -30,9 +30,27 @@ Before opening an untrusted project's CMM-generated hook/plugin config, review i
 commands with the host's normal approval workflow. Do not approve an unknown plugin solely
 because it uses a CMM-looking filename. CMM does not bypass project trust.
 
-For a vulnerability report, share a minimal synthetic reproduction through a private channel
-with the repository maintainer. Do not post real archives or keys in public issues. No maintainer
-contact/repository URL is fabricated in this pre-publication release.
+For a vulnerability report, share a minimal synthetic reproduction privately with the maintainer of
+https://github.com/usermbzlj/context-memory-manager. Do not post archives, logs containing secrets
+or keys in public issues.
+
+## Local dashboard
+
+`cmm dashboard` is a local HTTP service with these boundaries:
+
+- It binds only to loopback and checks the exact Host and Origin values.
+- The launch URL carries a one-use token in its fragment; keep it private. After login the browser
+  holds an HttpOnly SameSite per-port cookie (`cmm_session_<port>`) and writes need a CSRF token.
+- Configuration read DTOs never contain credentials. A literal API key you enter is stored in
+  `config.json` in plaintext, with user-only permissions where the OS supports it; prefer
+  environment variables.
+- Provider tests run only on explicit request and may incur charges. Opening or polling the UI
+  sends no model request.
+- `runtime/` observation metadata excludes captured text, prompts and keys.
+- Credentials are refused over cleartext http to non-loopback hosts.
+- No GC, deletion, backup/restore or host-trust edits are exposed.
+
+The dashboard is not an authentication boundary against another process running as your user.
 
 
 ## Evidence introduced by filters and importers

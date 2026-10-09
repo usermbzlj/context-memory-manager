@@ -46,7 +46,8 @@ node .\dist\src\cli.js dashboard --storage "C:\path\to\existing-cmm-storage" --o
 
 The bundled browser UI has realtime activity, evidence search and verified downloads, sessions
 and chains, provider configuration/call history, strategies, and cancellable integrity/reindex
-jobs. It binds only to `127.0.0.1`; Ctrl+C stops both the HTTP service and its SQLite worker.
+jobs. It binds only to `127.0.0.1`; Ctrl+C stops both the HTTP service and its SQLite worker
+(a second Ctrl+C forces exit).
 It does not create an archive implicitly. Keep the launch link private. Model tests run only
 when requested; remote tests may incur charges. See [dashboard operation](docs/DASHBOARD.md).
 
@@ -90,6 +91,11 @@ observed output -> exact byte archive + provenance + searchable chunks
                         |
                  search -> exact bounded recall
 ```
+
+Retention scoring is deterministic by default. Optional model roles (`retention`, `capsule`,
+`chain`) can use OpenAI-compatible, Anthropic or Gemini providers, and retention can use a local
+native `systemone` scorer; failures and deadlines fall back conservatively and never evict an
+event fully. See [Operations](docs/OPERATIONS.md#configuration).
 
 Balanced mode triggers at estimated 65% context use and targets 48%. Those are policy inputs,
 not a measurement of provider tokenization. Only tool results actually present in this host
@@ -179,20 +185,26 @@ npm test
 npm run test:pack
 ```
 
-The latest 2026-10-08 Windows run has **200 tests: 199 pass, 0 fail, 1 platform skip**, including original regressions, actual
+2026-10-10 Windows full suite: 302 tests, 301 pass, 0 fail, 1 Windows file-symlink skip. It includes original regressions, actual
 v0.1/v0.2 schema fixtures, corruption checks, concurrent writers, independent protocol peers,
-RTK schema fixtures and real CLI subprocesses. The distributable check installs the actual local
+RTK schema fixtures, dashboard HTTP/worker tests and real CLI subprocesses. Counts, commands and
+exact boundaries are in [the validation record](docs/RELEASE_VALIDATION.md). The distributable check installs the actual local
 tarball into an isolated directory. The Windows smoke covers paths with spaces, demo, setup,
 uninstall, generated Codex-hook execution, exact recall and verify under PowerShell 5.1 and 7.
 The offline package check also executes its installed hook through the host shell. Re-run
 `setup codex` to replace an older Windows command, then review/trust the changed hook in Codex.
 The installed Kimi Code 2.1.1 binary was also run with an isolated home and
 a scripted local model: hooks archive its tools, MCP recall works, uninstall restores the config.
-CI for Windows/Linux/macOS is configured, not claimed green.
+CI for Windows/Linux/macOS is configured, not claimed green (no real remote run yet).
 
 The installed Codex 0.162.0-alpha.2 binary also discovers the project configuration and all
 five MCP tools. Its capture hook is parsed but still requires user trust; native capture and
 in-session recall are not yet certified. See the validation record for the exact boundary.
+
+Not yet verified: real-model Kimi, Claude, Codex and OpenCode/Bun sessions; Codex native capture
+after the modified hook is re-trusted; a real remote CI run; task quality and context-token or
+cost effect of history projection; real-model quality of native/remote scoring; and a user's
+browser acceptance of the dashboard.
 
 The demo's 95.51% character reduction is one synthetic example, **not** a measured API-token,
 billing, cache-hit or task-quality improvement. Read [the full validation boundary](docs/RELEASE_VALIDATION.md).

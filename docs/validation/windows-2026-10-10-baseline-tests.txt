@@ -1,0 +1,322 @@
+
+> context-memory-manager@0.3.0-rc.2 test
+> npm run build && node --test "dist/tests/*.test.js"
+
+
+> context-memory-manager@0.3.0-rc.2 build
+> node scripts/clean.mjs && tsc && npm run build:web
+
+
+> context-memory-manager@0.3.0-rc.2 build:web
+> tsc --project web/tsconfig.json && vite build --config web/vite.config.ts
+
+vite v8.3.4 building client environment for production...
+transforming...
+鉁?17 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/src/dashboard/assets/index.html                   0.42 kB 鈹?gzip:  0.32 kB
+dist/src/dashboard/assets/assets/index-BPn6dYjt.css   23.00 kB 鈹?gzip:  5.12 kB
+dist/src/dashboard/assets/assets/index-D5i6ADYp.js   273.52 kB 鈹?gzip: 85.64 kB
+
+鉁?built in 189ms
+鈻?archive failure 鈬?KEEP (never compact what was not archived)
+  鉁?a failed archive records nothing and compacts nothing (249.8096ms)
+  鉁?the manager keeps working after an archive failure (299.1701ms)
+鉁?archive failure 鈬?KEEP (never compact what was not archived) (550.4473ms)
+鈻?jev batch scoring
+  鉁?scores a batch with a single provider call (311.2049ms)
+  鉁?rejects a batch response with the wrong number of scores (288.4389ms)
+  鉁?batch failure routes every event to the fallback scorer (733.3198ms)
+  鉁?scoreBatch with no providers throws (caller falls back) (292.4354ms)
+鉁?jev batch scoring (1627.0715ms)
+鈻?capsule failure 鈬?KEEP (never destroy history)
+  鉁?a failed capsule build degrades the decision to keep (370.9761ms)
+鉁?capsule failure 鈬?KEEP (never destroy history) (372.2241ms)
+鉁?target session activity creates its own chain and never mutates the recalled source chain (588.5272ms)
+鉁?chain member writes reject foreign agent, workspace and source session (598.1699ms)
+鉁?target recall protection expires on its own turn counter regardless of source chain turns (702.9804ms)
+鉁?legacy mixed chain members do not affect source-chain readers or foreign-view protection (521.2235ms)
+鉁?source-chain pins retain global and explicit session scopes on recalled evidence (782.8831ms)
+鉁?global source-chain pin restores a cached target view and unpin reuses the same cached bytes (751.8595ms)
+鉁?an invalid legacy source-chain association cannot borrow its global pin (476.4273ms)
+鈻?chain linking across a fix cycle
+  鉁?links the failure鈫抐ix鈫抪ass run into a completed chain with a frozen capsule (444.0741ms)
+鉁?chain linking across a fix cycle (445.69ms)
+鉁?child shutdown waits for stdio close, not exit, and escalates when TERM is ignored (86.0923ms)
+鉁?an unconfirmed close reaches a deadline and leaves temporary files recoverable (106.8074ms)
+鉁?shutdown releases an actual SQLite child before deleting its storage (242.5ms)
+鉁?a failed spawn still waits for close before declaring cleanup safe (3.2816ms)
+鉁?configuration writers in independent processes reread under lock and preserve other fields (171.5143ms)
+鉁?CLI rejects configuration replacements that would prevent the next reopen, without changing bytes (1889.8204ms)
+鉁?direct configuration saves reject incomplete or unknown nested fields before replacing a file (20.6231ms)
+鉁?partial older disk configurations still receive defaults and unsafe or inherited keys remain refused (45.3162ms)
+鉁?installed-assets dashboard authenticates, blocks cross-origin/CSRF, and preserves verified original downloads (898.4389ms)
+鉁?dashboard refuses unknown storage instead of creating an empty archive (0.7799ms)
+鉁?a late initial config publisher preserves the winner and its exact bytes (37.021ms)
+鉁?simultaneous initial config publishers have exactly one complete winner (210.5336ms)
+鉁?three independent Node writers serialize SQLite and deduplicate blobs without losing any call (2927.5385ms)
+鉁?future database schema is refused before any table or user_version is rewritten (130.1291ms)
+鉁?nested transactions roll back only their savepoint and async callbacks cannot commit (303.5208ms)
+鉁?GC commits event deletion before touching blobs and never deletes a shared live blob (470.141ms)
+锕?symlinked archive paths cannot escape the storage root (0.3268ms) # Creating a symlink may require Windows developer mode; path traversal is covered on every platform
+鉁?v3 defaults preserve first-use output and need no model or RTK (552.647ms)
+鉁?RTK commands and hints are detected without executing or trusting a hint (502.7341ms)
+鉁?host truncation can never be upgraded to complete by a local checksum (427.9646ms)
+鉁?malformed provenance fails closed before a successful archival claim (279.5671ms)
+鉁?middle-of-log evidence is searchable and maps to exact recall offsets (442.0695ms)
+鉁?literal recall find returns mid-log evidence without rereading the entire field into context (3759.8467ms)
+鉁?overlapping chunk indexing handles literal queries crossing chunk boundaries (567.4977ms)
+鉁?search cursor preserves records with identical timestamps and binds scope/query (582.81ms)
+鉁?index SQL/FTS metacharacters are data; literal punctuation is not an empty recent search (373.5905ms)
+鉁?reindex upgrades old records and GC removes their derived evidence (391.5949ms)
+鉁?projection marker spoofing or alteration never restores or replaces another text (308.8334ms)
+鉁?projection receipts are bound to session and survive a process-equivalent reopen (260.6711ms)
+鉁?a corrupted projection receipt is never trusted (274.9724ms)
+鉁?below-pressure histories do not rewrite even if desired retention state is capsule (253.4837ms)
+鉁?only visible verified events are considered; absent archives are not counted as savings (284.4843ms)
+鉁?insufficient batches remain untouched and create no projection receipt (311.4117ms)
+鉁?history cooldown coalesces edits and critical pressure can override it (371.146ms)
+鉁?pin restores cached text even below pressure; no new compression batch is counted (297.0201ms)
+鉁?foreign and duplicate history events cannot poison another session (237.3319ms)
+鉁?shared cross-agent reads cannot mutate pins on a foreign archive (215.2583ms)
+鉁?verification reports corrupted projection receipts, not just source blobs (233.6607ms)
+鉁?literal find with a small page includes the hit instead of only leading context (395.4036ms)
+鉁?NUL-containing archives remain exact and are not put in lossy TEXT projection receipts (219.3497ms)
+鉁?recalled histories keep source and target retention states independent (225.0231ms)
+鉁?index capacity is explicit and an unindexed tail remains fully recallable (937.376ms)
+鈻?fallback scorer never evicts
+  鉁?caps a 0.85 fallback score at capsule under aggressive (3967.8752ms)
+  鉁?still caps at capsule when the primary is the fallback itself (3855.7151ms)
+鉁?fallback scorer never evicts (7824.79ms)
+鈻?archive gc
+  鉁?is a no-op when no retention caps are configured (310.0381ms)
+  鉁?deletes only evicted events older than retentionDays (644.2484ms)
+  鉁?skips pinned and recall-protected evicted events (701.4198ms)
+  鉁?never deletes capsule-state events (700.3583ms)
+  鉁?keeps truly evicted evidence when its source chain becomes active again until freshness expires (1276.9447ms)
+  鉁?removes blob files only when no event references them (1724.2649ms)
+  鉁?maxSizeBytes deletes oldest evicted first until under the cap (1040.0356ms)
+鉁?archive gc (6399.1299ms)
+鈻?archive is idempotent on duplicate tool_call_id
+  鉁?second record returns the same event without duplicating (305.3082ms)
+  鉁?duplicate detection is scoped to (agent, workspace, tool_call_id) (226.6952ms)
+鉁?archive is idempotent on duplicate tool_call_id (533.2545ms)
+鉁?Claude native hook replaces only successful canonical Bash stdout and preserves all metadata (484.0186ms)
+鉁?Claude structured unknown shapes and failures never emit a replacement (664.3896ms)
+鉁?Codex captures stdout silently and never uses block, continue or additionalContext as compression (418.3951ms)
+鉁?Kimi accepts tool_output and generates observation IDs when the post hook has no call ID (477.3534ms)
+鉁?own memory tools are ignored and failure markers are conservative (285.5999ms)
+鉁?archive failure keeps the native result unchanged (294.4467ms)
+鉁?actual hook CLI fails open for malformed input, invalid config and unrelated workspaces (731.5854ms)
+鉁?actual Codex hook persists a searchable event without polluting stdout (745.8548ms)
+鉁?setup preview writes nothing and excludes existing secrets from CLI output (397.3533ms)
+鉁?Claude setup preserves unrelated hooks and MCP servers, backs up originals and is idempotent (340.9781ms)
+鉁?Claude hooks use shell-free exec form and replace an older shell-form CMM handler (386.5005ms)
+鉁?unmanaged config conflicts and malformed blocks are refused without overwriting (292.5356ms)
+鉁?Codex TOML surgical merge preserves user bytes and has no approval bypass (351.1069ms)
+鉁?Codex Windows hooks quote PowerShell literals while other shells retain their command form (0.5166ms)
+鉁?generated Codex hook upgrades the old command and archives through real Windows PowerShell (3351.8222ms)
+鉁?a config changed after planning is not overwritten (216.3189ms)
+鉁?Windows commands quote spaces and refuse shell metacharacters; POSIX apostrophes are escaped (0.3316ms)
+鉁?Kimi setup adds per-workspace user-level hooks and project MCP; uninstall restores exact bytes (329.1886ms)
+鉁?Kimi hooks are recognized after a comment-dropping rewrite; unsafe forms and missing config are refused (259.6192ms)
+鉁?Kimi setup and uninstall refuse multiline TOML values without changing user files (208.3402ms)
+鉁?Kimi TOML guard permits triple quotes in comments and ordinary single-line strings (202.0086ms)
+鉁?Kimi 2,000-unit tool_output prefixes are partial evidence and are never projected again (222.8801ms)
+鉁?a user-level Kimi hook ignores other projects silently (237.7333ms)
+鉁?removed Kimi launch wrapper explains the supported setup (277.5378ms)
+鉁?OpenCode contract changes only completed tool-result text; user/prose/input/attachments remain intact (2.3527ms)
+鉁?real OpenCode plugin Node bridge archives, projects, resumes and restores a pinned result (508.6011ms)
+鉁?OpenCode native truncation metadata protects after-hook and transform-only captures from recompression (615.0846ms)
+鉁?OpenCode disposal waits for the bridge and repeated disposal shares its completion (0.5769ms)
+鉁?CLI help and unknown commands do not create storage, exports refuse overwrite (670.0461ms)
+鉁?uninstall is reversible, removes only marked config and never deletes the archive (385.8766ms)
+鉁?OpenCode global worktree sentinel never collapses unrelated projects into root (0.162ms)
+鈻?internal tools (context_*) are audit-only
+  鉁?context_recall is not recorded as a tool event but is audited (238.0105ms)
+鉁?internal tools (context_*) are audit-only (239.3167ms)
+鈻?lifecycle: record 鈫?pressure 鈫?tidy
+  鉁?every event gets a valid decision and stats stay consistent (559.0419ms)
+鉁?lifecycle: record 鈫?pressure 鈫?tidy (560.3841ms)
+鉁?management scope rejects foreign event, session, chain and capsule without exposing archive refs (592.0816ms)
+鉁?management pagination has a total order, signed expiry and binding to filters and scope (573.0168ms)
+鉁?management content and bounded download verify exact Unicode bytes without recall effects (478.4366ms)
+鉁?settings credentials are write-only and preserved, replaced and deleted under CAS (615.1901ms)
+鉁?provider tests require a saved revision, synthetic schema and redact failed provider output (473.4151ms)
+鉁?native provider tests use state/questions and failures never return remote bodies or keys (479.7731ms)
+鉁?content enforces the absolute 64,000-unit boundary without splitting Unicode (4492.9577ms)
+鉁?event identity is scoped to session; conflicting retries never overwrite evidence (517.8804ms)
+鉁?duplicate observations do not advance turns or multiply rows (427.1616ms)
+鉁?agent and workspace scopes are isolated; shared access is explicit and workspace-only (400.0296ms)
+鉁?paged Unicode, CRLF and NUL recall reassembles exact input/output without splitting surrogate pairs (705.7173ms)
+鉁?partial recall is read-only; restoring a whole result creates a separate protected view (422.9752ms)
+鉁?search treats FTS and SQL metacharacters as data and supports Unicode evidence (404.1223ms)
+鉁?projection is bounded, genuinely smaller, searchable and recoverable (451.0235ms)
+鉁?no projection when the caller output changed or savings are too small (456.7334ms)
+鉁?pin restores our previous history projection while preserving the exact captured original (570.5064ms)
+鉁?capture-only mode never projects or tidies outputs (412.9997ms)
+鉁?OpenCode captures protect newly observed outputs for their first consumption window (429.8049ms)
+鉁?corrupt external blob blocks projection and verification reports the exact event (426.2345ms)
+鉁?inline integrity and canonical blob paths are verified; malformed UTF-16 is refused (410.2592ms)
+鉁?an already-existing corrupt hash file cannot count as an archived duplicate (301.4978ms)
+鉁?terminal output tail and structured stdout retain failure and test facts (3.8235ms)
+鉁?invalid provider JSON fails over to the next provider, rather than counting as success (295.8812ms)
+鉁?NaN custom scorer never evicts an event (328.321ms)
+鉁?pin arriving while an asynchronous scorer runs wins over its stale result (291.0033ms)
+鉁?GC cannot starve behind protected old events or delete shared content still referenced (1722.144ms)
+鉁?invalid config is not silently replaced with defaults (210.2612ms)
+鉁?shared cross-agent recall cannot reassign or poison the calling agent session (329.9546ms)
+鉁?blob integrity is checked on raw bytes before UTF-8 replacement decoding (203.6712ms)
+鉁?runtime stays disabled without a dashboard lease; unavailable channels never break archive or provider calls (347.2218ms)
+鉁?operation snapshots show real start/end, source scope and stable adopted revision with no private content (396.9045ms)
+鉁?independent hook process observations are visible and terminate without a persistent heartbeat (142.0969ms)
+鉁?stale heartbeats never become running activities or PID liveness assertions; lease replacement isolates observation windows (110.3545ms)
+鉁?interrupted stale metadata can be recycled without touching the archive (293.8151ms)
+鉁?runtime data is bounded across hook churn, active operations, labels, and untrusted metadata files (3843.7459ms)
+鉁?provider observation includes validation failures and preserves the original call ledger (29.8206ms)
+鉁?a conservative scoring fallback is observed even when its low score keeps the event (443.2555ms)
+鉁?unpin rolls back intermediate writes and rechecks the source agent inside its transaction (311.9406ms)
+鉁?verify exposes progress, yields to cancellation, and preserves captured bytes and completeness (1286.3601ms)
+鈻?pin session scoping
+  鉁?a pin for session s1 does not protect the event in session s2 (631.0391ms)
+  鉁?a global pin protects the event in every session (655.5744ms)
+  鉁?the same event can be pinned in two sessions independently (337.294ms)
+鉁?pin session scoping (1625.1837ms)
+鉁?malformed JSON configuration errors do not echo its private source content (243.7231ms)
+鉁?provider JSON validation failure still fails over without storing response excerpts (0.8083ms)
+鉁?all HTTP provider adapters omit private error bodies from failure diagnostics (5.8431ms)
+鉁?retention rechecks chain changes after a pending score (1021.6098ms)
+鉁?retention rechecks pin changes after a pending score (920.6928ms)
+鉁?retention rechecks recall changes after a pending score (923.682ms)
+鉁?retention rechecks state changes after a pending score (919.4754ms)
+鉁?retention rechecks a chain that becomes active while its capsule is being built (938.6841ms)
+鉁?a same-session chain becoming active restores its cached history view below pressure (944.9491ms)
+鉁?JSONL handles arbitrary UTF-8 chunk boundaries, CRLF and trailing JSON (6.0163ms)
+鉁?invalid UTF-8 and over-limit JSONL cannot silently alter captured evidence (1.3273ms)
+鉁?JSON-RPC rejects malformed JSON, batch requests and invalid ids, then keeps serving (2.6796ms)
+鉁?JSON-RPC cancellation signals handlers and does not report an aborted operation as success (3.0613ms)
+鉁?actual CLI stdio MCP is interoperable with an independent client and emits no banner (635.3615ms)
+鉁?MCP negotiates a supported version instead of pretending to implement unknown future versions (450.8602ms)
+鉁?dual-era MCP serves stateless 2026-07-28 requests without a handshake and keeps legacy gating (617.058ms)
+鉁?MCP gateway executes each tool once, shrinks eligible text and preserves every structured/error shape (917.457ms)
+鉁?MCP gateway keeps original output if archiving fails; it never repeats the upstream call (351.4127ms)
+鉁?upstream request timeout does not retry side effects (623.9828ms)
+鉁?the actual CLI proxy exposes memory plus upstream tools (681.0412ms)
+鉁?the actual CLI proxy rejects stateless requests before upstream tool execution (614.9923ms)
+鉁?fixture cleanup closes an actual SQLite child even when another resource cleanup fails (491.1991ms)
+鉁?RPC client and independent peer await actual termination when a child ignores stdin EOF (2177.0381ms)
+鉁?multimedia and annotated text are not projection candidates (0.2009ms)
+鉁?duplicate observations add partial restrictions without replacing originals or identities (548.4012ms)
+鉁?conflicting duplicate content cannot alter source provenance (439.1928ms)
+鉁?new observations cannot upgrade completeness or replace imported source identity (0.6852ms)
+鉁?OpenCode cached after-hook observations learn late truncation metadata and retain first presentation (460.4756ms)
+鉁?late OpenCode truncation on a recognized cached projection restores the source without recapturing marker bytes (477.3474ms)
+鉁?restriction observations reject spoofed markers, wrong invocation scope, receipt corruption and completeness upgrades (444.5732ms)
+鉁?restriction observation cannot republish provenance retired during the verified source read (476.9521ms)
+鉁?short JSON calls explicitly disable reasoning when configured and retain old request defaults (29.4941ms)
+鉁?reasoning config accepts explicit compatible-provider efforts and rejects invalid values or kinds (1.8941ms)
+鈻?recall restores the EXACT original
+  鉁?restores byte-identical input/result after eviction (757.5416ms)
+  鉁?recall works across sessions (no session scoping on recall) (346.5407ms)
+  鉁?recall is isolated by agent: a wrong agent throws (353.3782ms)
+鉁?recall restores the EXACT original (1458.7795ms)
+鈻?recall session views
+  鉁?recall into another session preserves source and creates a separate view (306.3899ms)
+  鉁?recall without a session keeps the legacy behavior (312.5425ms)
+鉁?recall session views (620.1969ms)
+鉁?input recall cannot restore a large result or alter protection and views (487.4712ms)
+鉁?Unicode projection survives cache reads, reopen and pin restoration byte-for-byte (549.6746ms)
+鈻?verify checks source and visible hashes for every projection representation
+  鉁?text (473.4023ms)
+  鉁?stdout (455.6398ms)
+  鉁?mcp-text (630.9347ms)
+鉁?verify checks source and visible hashes for every projection representation (1560.8096ms)
+鉁?verify rejects unsupported receipt identities and unauthorized session views (532.0481ms)
+鉁?explicit partial provenance is retained when RTK command detection applies (0.3208ms)
+鉁?reindex does not republish evidence retired while its original read was pending (451.7366ms)
+鉁?pin rejects an event retired while its original read was pending without creating an orphan pin (521.4379ms)
+鉁?legacy Windows workspace and host session identities remain readable and idempotent (371.1359ms)
+鉁?legacy missing-project parent spelling is resolved without rewriting its identity (315.7546ms)
+鉁?RTK full gzip payload is independently hash-checked, copied, searchable, and source DB stays unchanged (570.7748ms)
+鉁?RTK truncated hidden tail is partial and never validated against an unavailable full hash (511.8475ms)
+鉁?RTK corrupted full-source hash is refused instead of trusted because the filename looks hashed (382.3656ms)
+鉁?RTK workspace mismatch and missing cwd are refused before data can cross project scopes (446.9222ms)
+鉁?RTK reference input cannot inject SQL or execute a shell command (277.899ms)
+鉁?RTK raw codec works and unknown codec or invalid UTF-8 fails clearly (430.3184ms)
+鉁?RTK malformed gzip, impossible length, and schema views are refused (464.2717ms)
+鉁?RTK expired references do not cause source database creation (334.8671ms)
+鉁?explicit RTK opt-in automatically copies a hint but preserves original event provenance and output (484.206ms)
+鉁?unavailable RTK copy fails open after the observed host output is safely archived (432.4662ms)
+鉁?CLI RTK dry run does not create destination storage; actual import exposes exact recalled data (1073.8921ms)
+鈻?schema migrations
+  鉁?upgrades a v1-shaped database to v4 with data intact (628.8702ms)
+鉁?schema migrations (629.6845ms)
+鉁?migrates the actual uploaded v0.1 schema-v2 constraints, preserves evidence and scopes recycled IDs (1406.3239ms)
+鉁?upgrades the actual v0.2 schema-v3 layout without inventing provenance or trusting legacy markers (1695.2211ms)
+鈻?scorer failover 鈬?conservative fallback
+  鉁?failed providers fall back: a small event is kept, never evicted (451.6331ms)
+  鉁?a working provider score flows through: 0.99 evicts a noisy event (358.0011ms)
+鉁?scorer failover 鈬?conservative fallback (810.7757ms)
+鈻?side-effect tools are never silently evicted (鈮?capsule)
+  鉁?a 0.99-scored Edit is capsuled, never evicted (467.1349ms)
+鉁?side-effect tools are never silently evicted (鈮?capsule) (468.0009ms)
+鉁?native scorer sends state/questions directly, preserves probability order and logs actual usage (367.629ms)
+鉁?native scorer scores every event across bounded groups instead of dropping the batch tail (500.3826ms)
+鉁?missing, mismatched, nonnumeric or out-of-range native probabilities reject the whole group (349.3889ms)
+鉁?unavailable native decisions fail open through conservative retention and preserve exact archives (463.2ms)
+鉁?native HTTP transport aborts stalled responses and refuses unauthenticated remote endpoints (291.9177ms)
+鉁?oversized native inputs fail before a call and remain eligible for conservative fallback (313.5493ms)
+鉁?configuration rejects native decision providers in prose-generation roles or with a mismatched scorer (0.931ms)
+鈻?tidy loops to release in bounded batches
+  鉁?scores 16 hot events in 2 passes with one model call per pass (1338.9238ms)
+  鉁?stops looping when pressure is already below the trigger (279.0655ms)
+  鉁?a pass that changes nothing stops the loop early (722.0633ms)
+鉁?tidy loops to release in bounded batches (2341.7724ms)
+鉁?Windows drive and UNC identities are lexical, idempotent and preserve component case (1.8376ms)
+鉁?relative, absolute and existing workspace spellings share a stable identity (4.7596ms)
+鉁?capture lookup search recall and pin work before and after workspace creation (419.4139ms)
+鉁?UNC legacy scope resolution folds only volume names and observes new conflicts without network access (301.5602ms)
+鉁?lexical drive candidates stay separate across volumes and avoid redundant canonical path probes (309.9985ms)
+鉁?cross-volume legacy junction aliases still resolve and all conflicting aliases are checked (283.826ms)
+鈻?workspace id normalization
+  鉁?unit: opaque, relative, and home forms normalize correctly (2.6437ms)
+  鈻?end to end
+    鉁?relative and absolute workspace ids share one workspace row (360.1339ms)
+    鉁?duplicate detection survives path-form differences (301.0121ms)
+  鉁?end to end (661.4572ms)
+鉁?workspace id normalization (665.2919ms)
+鈩?tests 229
+鈩?suites 18
+鈩?pass 227
+鈩?fail 1
+鈩?cancelled 0
+鈩?skipped 1
+鈩?todo 0
+鈩?duration_ms 13735.2688
+
+鉁?failing tests:
+
+test at dist\tests\config-concurrency.test.js:8:1
+鉁?configuration writers in independent processes reread under lock and preserve other fields (171.5143ms)
+  Error: node:fs:622
+    return binding.open(
+                   ^
+  
+  Error: EPERM: operation not permitted, open '<temp>\cmm-config-lock-duGKzk\config.write.lock'
+      at Module.openSync (node:fs:622:18)
+      at updateConfig (file:///<repo>/dist/src/config.js:182:21)
+      at async file:///<repo>/[eval1]:1:115 {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'open',
+    path: '<temp>\\cmm-config-lock-duGKzk\\config.write.lock'
+  }
+  
+  Node.js v24.19.0
+  
+      at ChildProcess.<anonymous> (file:///<repo>/dist/tests/config-concurrency.test.js:22:71)
+      at ChildProcess.emit (node:events:509:28)
+      at maybeClose (node:internal/child_process:1141:16)
+      at ChildProcess._handle.onexit (node:internal/child_process:306:5)
+EXIT=1

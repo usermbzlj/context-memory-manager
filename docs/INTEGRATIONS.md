@@ -85,7 +85,8 @@ This merges `.codex/hooks.json` and a marked `[mcp_servers.context_memory]` bloc
 when required. CMM never grants trust or changes sandbox/approval settings for you.
 
 On Windows, generated Codex hooks run in PowerShell using `&` and single-quoted literal
-arguments, preserving spaces, apostrophes, dollar signs and backticks in paths. Re-run setup
+arguments, preserving spaces, apostrophes, dollar signs and backticks in paths. Typographic single
+quotes (U+2018 to U+201B) are doubled as well, so such paths work in PowerShell 5.1 and 7. Re-run setup
 to replace an older quoted-executable command that failed before starting Node. The changed
 definition must be reviewed/trusted again in Codex, then reloaded in the client/session.
 CLI, package and Windows smoke checks execute the generated command with isolated evidence;
@@ -178,6 +179,17 @@ There is no Streamable HTTP/SSE, resource/prompt passthrough, roots, sampling, e
 server-initiated capability forwarding or latest-protocol compliance claim. Use the upstream
 directly when those capabilities are required. There are at most eight concurrent inbound
 requests, 32 MiB per frame, and 100 tool-list pages.
+
+## Optional model providers
+
+Retention/capsule/chain providers are independent of host integrations and never change what a
+host can do. Fetch-based kinds (`openai-compatible`, `anthropic`, `gemini`) refuse redirects, cap
+replies at 1 MiB and still honor Node's proxy environment. Native `systemone` (retention only)
+caps replies at 256 KiB, refuses non-200 responses and connects directly, ignoring proxy
+environment variables. Each batch has one overall deadline across failover providers (retention
+20 s, capsule 45 s, chain 20 s); on expiry the whole batch uses the conservative fallback and the
+exact archive is untouched. Credentials are refused over cleartext http to non-loopback hosts.
+See [Operations](OPERATIONS.md#configuration).
 
 ## RTK coexistence
 

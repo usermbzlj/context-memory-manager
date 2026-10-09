@@ -10,11 +10,17 @@ import identity); their default is `cli`, not whichever host last ran.
 ```text
 storage/
   config.json      Validated settings; prefer API-key environment variables
+  config.write.lock Present only while a configuration writer runs (or after a crash)
   cmm.db           SQLite metadata, inline text, views, FTS evidence index, receipts
   cmm.db-wal/shm   Active SQLite sidecars, when present
   blobs/aa/bb/sha  Content-addressed captured UTF-8 payloads
   logs/            Bounded metadata diagnostics, not a second full transcript
+  runtime/         Lossy dashboard observation: lease file + up to 128 slot-NNN.json
 ```
+
+`runtime/` is best-effort metadata written through temp file + rename (each slot at most 64 KiB,
+no captured text, prompts or keys). It is never an archive and may be deleted when no dashboard
+or host is running.
 
 An event ID is the unambiguous archive handle. Its original agent/workspace/session/tool-call
 provenance is immutable. Later verified observations may add partial/filtered restrictions,
@@ -48,7 +54,23 @@ Shell quoting of JSON strings differs by shell. Editing `config.json` directly i
 supported; retain valid JSON and restart persistent bridges/agents afterwards. Boolean and
 numeric examples above require no nested quotes. Bad JSON is not silently reset. Unknown
 config keys, invalid ranges and unsafe provider URLs are rejected. `config show` redacts
-literal API keys; environment variable names remain visible for diagnosis.
+literal API keys; environment variable names remain visible for diagnosis. A UTF-8 BOM at the
+start of `config.json` is tolerated on read.
+
+Writers (CLI, dashboard) take `config.write.lock`, which records `{pid, hostname, createdAt}`.
+A lock whose holder is a dead process on the same host is removed automatically. Any other lock
+(live process, another host, unreadable or older-format file) causes a refusal naming the file;
+delete it only after confirming that no CMM process is running. Transient Windows sharing errors
+are retried.
+
+A provider with `apiKey` or `apiKeyEnv` must use https unless its host is `localhost`,
+`127.0.0.0/8` or `[::1]`; keyless providers may use http. The rule applies when a provider entry
+is added or changed. Older entries that violate it still load and survive unrelated saves, so
+hooks keep capturing, but the provider refuses to send credentials over plain http to a
+non-loopback host (that call fails and the conservative fallback applies). Changing such an entry
+is refused until its URL or key is fixed. Changing a provider's base URL origin (scheme/host/port)
+through settings requires replacing or deleting its stored key; a model-only edit keeps the stored
+URL's query string.
 
 Balanced is the default strategy. With no provider configured, deterministic fallback remains
 functional and never fully evicts an event. Optional `providers.retention`, `providers.capsule`
@@ -94,6 +116,15 @@ failed request. The HTTP transport connects directly even when proxy environment
 are set. Model probabilities are not a task-quality or calibration guarantee. Native Codex
 hooks remain capture-only regardless of which scorer is configured.
 
+Fetch-based providers (`openai-compatible`, `anthropic`, `gemini`) refuse redirects and cap replies
+at 1 MiB; native `systemone` caps at 256 KiB and refuses non-200 replies. One overall deadline
+covers each batch across all failover providers: retention scoring 20 s, capsule 45 s, chain
+20 s. Each attempt gets at most an equal share of the remaining budget, so a stalled first
+provider cannot starve the next one. On expiry the whole batch uses the conservative fallback and
+exact archives are untouched.
+Error messages contain fixed text only (no bodies, URLs or keys). Fetch-based providers still
+honor Node's proxy settings; native `systemone` connects directly.
+
 A local OpenAI-compatible loopback endpoint can omit authentication. Remote endpoints require
 an API key. Invalid provider JSON triggers the next configured provider. Invalid custom scores
 fall back conservatively. Dated validation records distinguish offline/local checks from the
@@ -135,6 +166,7 @@ whole original, so many tiny pages of a large blob cost more I/O than one export
 requesting input or a partial result with restore fails before state or protection is changed.
 `verify` checks both receipt hashes, supported representation/mode and target-session membership,
 as well as the original archive. Its success does not certify upstream completeness or host use.
+Events retired by a concurrent GC during the run are not reported as failures; real corruption is.
 
 ## Optional RTK recovery copying
 

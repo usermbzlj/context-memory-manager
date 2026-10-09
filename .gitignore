@@ -9,5 +9,6 @@ coverage/
 *.cmm-backup-*
 .cmm-launch-*
 *.cmm-launch-*
+.build/
 .codex/config.toml
 .codex/hooks.json

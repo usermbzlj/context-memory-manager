@@ -16,6 +16,7 @@ Default ingress projection is OFF. Only actual visible items can enter a history
 Never recompress known filtered/partial evidence; never trust a marker without a hash-bound receipt.
 RTK hints are never commands. Read the source database only and keep imported evidence separate.
 Every hook failure is fail-open; never retry an upstream MCP tool call.
+The dashboard binds loopback only and exposes no GC/deletion/backup-restore, host trust modification, autonomous model tests or GPU control; runtime observation is lossy metadata, never evidence.
 Default retention has no deletion deadline. Explicit GC retires metadata before unlinking unreferenced blobs.
 
 ## Commands
@@ -26,9 +27,13 @@ Default retention has no deletion deadline. Explicit GC retires metadata before 
 
 ## Next evidence to obtain
 
-Run the documented live smoke on Windows with each exact agent version. CI configuration is not a
-completed CI run. Validate experimental OpenCode hooks in its real Bun host; no live host was available
-in the development container. Check actual task quality and context-token usage before marketing any
-savings number. Improve only the failures found by those checks. Do not add unrelated product surface.
+- Codex native capture closure after the user re-trusts the modified hook.
+- Real-model Kimi, Claude and OpenCode (Bun host) sessions on Windows with each exact agent version.
+- First real remote CI run; CI configuration is not a completed run.
+- Task quality and context-token/cost effect of history projection and of native/remote scoring,
+  before marketing any savings number.
+- User browser acceptance of the dashboard.
+
+Improve only the failures found by those checks. Do not add unrelated product surface.
 
 Do not commit private archives, config backups, temporary Kimi credentials, or generated local agent setup.

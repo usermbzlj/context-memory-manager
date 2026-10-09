@@ -1,8 +1,34 @@
 # Release validation: 0.3.0-rc.2
 
-Latest record: **2026-10-09, Windows, 0.3.0-rc.2**. Local release candidate; no npm/GitHub
+Latest record: **2026-10-10, Windows, 0.3.0-rc.2**. Local release candidate; no npm
 publication or live-agent certification. The 2026-10-05 rc.1 record, the **2026-10-02 Linux
 record** below and earlier v0.2 reports remain historical evidence for their exact snapshots.
+
+## Windows review and hardening: 2026-10-10
+
+Node 24.19.0, Windows 11 (console code page 936), PowerShell 5.1 and 7. Synthetic fixtures and
+local loopback servers only; no private archive, paid model, host trust change or live agent session.
+
+| Executed check | Actual result |
+| --- | --- |
+| Starting snapshot (2026-10-09 source) | `npm test`: 229 tests, 227 pass, **1 fail**, 1 skip. Failure: cross-process configuration writers, `EPERM` creating `config.write.lock` |
+| Final clean source suite | `npm test`: **302 tests, 18 suites; 301 pass, 0 fail, 1 Windows file-symlink skip**, exit 0 |
+| Configuration writers | Cross-process concurrency and lock-recovery files repeated 10 times: 10/10 pass. Dead same-host holder recovered; live, foreign-host, unreadable and older-format locks refused with bytes unchanged; release never removes a lock it does not own |
+| Offline distributable | `npm run test:pack`: actual tarball installs offline; dashboard assets/auth and exact download, generated hook capture and fail-open, setup/uninstall, MCP handshake and demo pass |
+| Windows smoke | `scripts/windows-smoke.ps1` passes under PowerShell 5.1 and 7 with the default 936 console code page; liveAgentTested=false |
+| Codex quoting | Real PowerShell 5.1/7 execute generated hooks for paths containing typographic single quotes (U+2018 to U+201B); capture, exact recall and verify pass |
+| Provider transport | Redirects refused, 1 MiB/256 KiB reply caps, mid-body stalls aborted, overall batch deadlines shared across failover attempts, credentials refused over plain http to non-loopback hosts; Node 24 `NODE_USE_ENV_PROXY` routing verified not to affect native `systemone` |
+| Dashboard boundary | Host rebinding, static traversal, oversized and non-JSON bodies refused; per-port cookies; cursor survives settings save; CLI exits on stdin EOF; worker crash exits 1 |
+
+The smoke script previously decoded CLI output with the console code page, so on Chinese Windows
+the exact Unicode comparison failed even though the archived bytes were correct (rerun with a UTF-8
+console passed). The script now sets UTF-8 output for its own run and restores the previous encoding.
+
+Logs: `windows-2026-10-10-baseline-tests.txt`, `windows-2026-10-10-tests.txt`,
+`windows-2026-10-10-package.txt`, `windows-2026-10-10-smoke-ps5.txt` and
+`windows-2026-10-10-smoke-ps7.txt` under `docs/validation` (local paths replaced by placeholders).
+The dashboard was not exercised in a browser in this round. Codex native capture after hook
+re-trust, real-model hosts, remote CI and task-quality/token/cost gates remain open.
 
 ## Windows local dashboard: 2026-10-09
 

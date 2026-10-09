@@ -1,6 +1,6 @@
 # Architecture: evidence-first history management
 
-Version 0.3.0-rc.2 / schema v4 / revised 2026-10-07.
+Version 0.3.0-rc.2 / schema v4 / revised 2026-10-10.
 
 ## Separation of responsibility
 
@@ -21,6 +21,17 @@ Optional native decision scoring uses a `systemone` retention provider and score
 posts typed questions, and the scorer validates and maps their probabilities before the existing
 protection/retention engine applies a decision. Native scoring never rewrites prose or changes
 host projection capabilities; provider/input failures retain the existing conservative fallback.
+Provider transport is bounded: fetch-based providers refuse redirects and cap replies at 1 MiB,
+native `systemone` caps at 256 KiB and ignores proxy environment variables, and each batch has one
+overall deadline across failover providers (retention 20 s, capsule 45 s, chain 20 s). Expiry
+sends the whole batch to the conservative fallback; error text is fixed and carries no bodies,
+URLs or keys.
+
+The observation write model is a storage `runtime/` directory with a lease file and up to 128
+`slot-NNN.json` files (at most 64 KiB), each published via temp file and rename. Persistent
+processes publish at most about every 250 ms; short hooks flush when the operation ends. It is
+lossy best-effort metadata, never an archive or evidence.
+
 The retained core is not discarded just to claim a rewrite. Optional scoring remains available;
 CLI filters belong upstream, not in another CMM filter registry.
 
@@ -53,7 +64,8 @@ retain their own origin and complete/partial status, never replacing host eviden
 
 Repeated observations of the same verified bytes may only add conservative partial/filtered
 restrictions; they cannot promote unknown/partial content to complete, replace an imported
-source's identity/digest, or change original bytes, event identity or capture stage. The private
+source's identity/digest, or change original bytes, event identity or capture stage. A duplicate
+capture does not rewrite provenance unless the merge changes it. The private
 OpenCode bridge accepts late restrictions only for the same source invocation and exact original
 or hash-verified cached history view. It rechecks source existence under the writer transaction.
 New partial/filtered evidence restores recognized views and prevents new projection.
@@ -72,7 +84,9 @@ Nested transactions use savepoints and reject asynchronous callbacks. Blob publi
 an orphan on a crash but GC retires references before unlinking unreferenced data. No distributed
 filesystem, hardware power-loss, hostile same-user or NFS durability guarantee is made.
 Concurrent initial configuration creation publishes a complete file without replacing another
-opener's settings. Explicit configuration changes continue to use atomic replacement.
+opener's settings. Explicit configuration changes take `config.write.lock` (`{pid, hostname,
+createdAt}`; a lock held by a dead process on the same host is removed, any other is refused)
+and use atomic replacement.
 
 ## Historical publication, not hypothetical occupancy
 
@@ -86,7 +100,9 @@ per-session cooldown, protected-event filtering and bounded retention scoring. N
 items are considered first (at most 24). First presentation, pins, recent recalls and active work
 remain protected. Fallback scores never fully evict. Concrete output reduction is measured before
 publishing; less than the configured batch threshold makes no new receipts. Atomic publication
-rechecks protections and records the entire batch, or returns originals without partial receipts.
+rechecks protections, provenance and result hash at commit and records the entire batch, or
+returns originals without partial receipts. Evidence that became partial/filtered meanwhile is not
+projected, so a batch may publish fewer events than proposed.
 A declined batch may leave desired core retention states changed; status explicitly distinguishes
 these from views actually returned.
 

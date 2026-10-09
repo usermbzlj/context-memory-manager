@@ -1,0 +1,57 @@
+
+> context-memory-manager@0.3.0-rc.2 test:pack
+> npm run build && node scripts/pack-smoke.mjs
+
+
+> context-memory-manager@0.3.0-rc.2 build
+> node scripts/clean.mjs && tsc && npm run build:web
+
+
+> context-memory-manager@0.3.0-rc.2 build:web
+> tsc --project web/tsconfig.json && vite build --config web/vite.config.ts
+
+vite v8.3.4 building client environment for production...
+transforming...
+鉁?17 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/src/dashboard/assets/index.html                   0.42 kB 鈹?gzip:  0.32 kB
+dist/src/dashboard/assets/assets/index-DR9XbQQ0.css   23.30 kB 鈹?gzip:  5.19 kB
+dist/src/dashboard/assets/assets/index-DNihRW_0.js   275.93 kB 鈹?gzip: 86.65 kB
+
+鉁?built in 130ms
+{
+  "package": "context-memory-manager-0.3.0-rc.2.tgz",
+  "sha256": "fbd7969fbefb3ae07669f42bed1193cff9b6b9f3fb289d4264de8ec6880400bc",
+  "files": 190,
+  "packedBytes": 513112,
+  "unpackedBytes": 1830727,
+  "isolatedInstall": true,
+  "registryRequired": false,
+  "help": true,
+  "demo": true,
+  "dashboardAssetsAndAuth": true,
+  "dashboardExactDownload": true,
+  "setupAndUninstall": true,
+  "generatedHookCapture": true,
+  "generatedHookFailOpen": true,
+  "mcpHandshake": true,
+  "demoProof": {
+    "demo": "Capture -> preserve first use -> pressure batch -> stable view -> mid-log search -> exact recall -> pin restoration",
+    "networkCalls": 0,
+    "firstUsePreserved": true,
+    "belowPressureUnchanged": true,
+    "stableProjection": true,
+    "middleEvidenceFound": true,
+    "pinRestoresOriginal": true,
+    "rtkDoubleCompressionBlocked": true,
+    "originalChars": 177048,
+    "projectedChars": 7950,
+    "visibleCharacterReductionPercent": 95.51,
+    "recallPages": 15,
+    "sha256": "faba2c8e5eb0c22a6c8c672d2aa4f62c4de1c1de0be4d865fd54437def563f1a",
+    "exactRecallVerified": true,
+    "note": "Synthetic trace with supplied estimated usage. Character counts are not measured API tokens, cost savings, cache hits or task quality.",
+    "excerpt": "[CMM archive 685d98f0-67b0-4049-95b5-fbccc616d5c8] Read | ok\nEvidence extract, NOT the full result. Captured: 177048 UTF-16 chars.\nExact captured text; completeness before the observation boundary is unknown.\nRead: context_recall({\"eventId\":\"685d98f0-67b0-4049-95b5-fbccc616d5c8\",\"offset\":0,\"limit\":12000}).\nRead artifacts/test.log 鈫?success\nexit code: 0\ntests: 3000 passed, 0 failed\nSUMMARY: 3000 passed; 0 failed. Exit code: 0.\npath: artifacts/test.log\n--- verbatim head ---\nPASS case-0000: cache, retry and archive evidence verified\nPASS case-0001: cache, retry and archive evidence verified\nPASS case-0002: cache, retry and archive evidence verified\nPASS case-0003: cache, retry and archive evidence verified\nPASS case-0004: cache, retry and archive evidence verified\nPASS case-0005: cache, retry"
+  }
+}
