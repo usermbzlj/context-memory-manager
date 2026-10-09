@@ -78,7 +78,8 @@ display defects, now fixed:
 - The copyable "redacted" diagnostics summary reports the workspace as a short `sha256:` digest
   instead of the local path.
 - Tests: temporary-directory cleanup retries Windows `EBUSY`; `test:pack` allows npm up to 180 s
-  (a shared Windows runner exceeded 20 s); a NaN deadline is treated as unbounded rather than 1 ms.
+  (a shared Windows runner exceeded 20 s); the native-scorer overall-deadline test gives two real
+  loopback providers 1000 ms instead of 150 ms; a NaN deadline is treated as unbounded rather than 1 ms.
 
 Schema/source version unchanged; local RC, not published. Validation is recorded in
 `docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite: 309 tests, 308 pass, 0 fail, 1 Windows
