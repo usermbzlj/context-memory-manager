@@ -195,7 +195,7 @@ The offline package check also executes its installed hook through the host shel
 `setup codex` to replace an older Windows command, then review/trust the changed hook in Codex.
 The installed Kimi Code 2.1.1 binary was also run with an isolated home and
 a scripted local model: hooks archive its tools, MCP recall works, uninstall restores the config.
-Remote CI [run 37968216772](https://github.com/usermbzlj/context-memory-manager/actions/runs/37968216772) passed on Ubuntu, Windows and macOS with Node 22.16.0, 22, 24 and 26 (earlier runs failed; the causes are fixed and listed in the validation record).
+Remote CI [run 37984233287](https://github.com/usermbzlj/context-memory-manager/actions/runs/37984233287) passed on Ubuntu, Windows and macOS with Node 22.16.0, 22, 24 and 26 (earlier runs failed; the causes are fixed and listed in the validation record).
 
 The installed Codex 0.162.0-alpha.2 binary also discovers the project configuration and all
 five MCP tools. Its capture hook is parsed but still requires user trust; native capture and

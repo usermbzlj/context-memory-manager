@@ -84,7 +84,7 @@ display defects, now fixed:
 Schema/source version unchanged; local RC, not published. Validation is recorded in
 `docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite: 309 tests, 308 pass, 0 fail, 1 Windows
 file-symlink skip (Node 24.19.0); the same build also passes on Node 22.16.0 (307 pass, 2 skips). Remote CI run
-37968216772 passed on Ubuntu, Windows and macOS with Node 22.16.0, 22, 24 and 26.
+37984233287 passed on Ubuntu, Windows and macOS with Node 22.16.0, 22, 24 and 26.
 
 ## 0.3.0-rc.2 Windows hook and evidence repairs - 2026-10-08
 
