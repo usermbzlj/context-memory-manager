@@ -257,10 +257,12 @@ export function rowToCapsule(row: CapsuleRow): MemoryCapsule {
 export type StrategyName = 'conservative' | 'balanced' | 'aggressive';
 
 export interface ProviderConfig {
-  kind: 'openai-compatible' | 'anthropic' | 'gemini' | 'fake';
+  kind: 'openai-compatible' | 'anthropic' | 'gemini' | 'systemone' | 'fake';
   name: string;
   model: string;
   baseUrl?: string;
+  /** Optional OpenAI-compatible reasoning control; omit for provider defaults. */
+  reasoningEffort?: 'none' | 'low' | 'medium' | 'high' | 'max';
   /** Literal API key (prefer apiKeyEnv). */
   apiKey?: string;
   /** Environment variable holding the API key. */
@@ -297,8 +299,8 @@ export interface Config {
   strategy: StrategyName;
   strategies: Record<StrategyName, StrategyPreset>;
   retention: {
-    /** Primary retention scorer: 'jev' (model-backed, default) or 'conservative' (deterministic). */
-    scorer: 'jev' | 'conservative';
+    /** 'systemone' uses native decision probabilities; 'jev' uses JSON chat scoring. */
+    scorer: 'jev' | 'systemone' | 'conservative';
   };
   storage: {
     /** Root dir for sqlite file, blobs, logs, config.json */

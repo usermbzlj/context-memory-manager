@@ -16,6 +16,18 @@ node .\dist\src\cli.js demo
 
 演示使用临时存储，不访问你的真实归档，不调用付费 API。它验证首次保留、低压力不修改、历史批处理、视图稳定、日志中段搜索、完整找回和固定后恢复。
 
+## 本地管理面板
+
+选择已有的 CMM 存储目录启动：
+
+```powershell
+node .\dist\src\cli.js dashboard --storage "C:\已有的CMM存储目录" --open
+```
+
+提供实时活动看板、证据检索与精确下载、会话与链、模型配置与调用账本、策略和诊断维护。
+只监听 `127.0.0.1`；启动链接包含一次性凭据，请保持私密。Ctrl+C 同时停止服务与数据库工作进程。
+面板不会隐式创建空归档，也不会自动调用付费模型。[操作与边界说明](docs/DASHBOARD.md)。
+
 ## 接入一个项目
 
 当前历史压缩主路径是 **OpenCode**：
@@ -52,6 +64,6 @@ node .\dist\src\cli.js setup opencode --workspace "D:\MyProject"
 
 升级前停止 Agent，备份整个存储目录，包括数据库侧文件和 blobs。本版迁移到 schema v4，旧可执行程序不能再写入。使用 `verify` 校验、`reindex` 重建旧数据索引。旧投影标记不会被自动当成可信凭据。
 
-2026-10-07 的 Windows 全套结果为 **182 项：181 通过、0 失败、1 项平台跳过**，包含原版回归、真实旧结构迁移、字节损坏和实际 CLI 子进程。离线安装包和 `scripts/windows-smoke.ps1` 均通过。已安装的 Kimi Code 2.1.1 在隔离目录中配合本地脚本化模型实测通过（Hook 归档、2,000 字符截断标 partial、MCP 找回、卸载还原）。**真实模型下的 Kimi、Claude、Codex、OpenCode/Bun、RTK 实际二进制、远程 CI 和真实任务质量/账单对照仍未验收。**
+2026-10-08 最新 Windows 全套结果为 **200 项：199 通过、0 失败、1 项平台跳过**，包含原版回归、真实旧结构迁移、字节损坏和实际 CLI 子进程。离线安装包与 PowerShell 5.1/7 的 `scripts/windows-smoke.ps1` 均实际执行生成的 Codex Hook，完成原文召回和哈希校验。旧 Windows 接入须重新运行 `setup codex`，再在 Codex 审阅并信任变更后的命令。已安装的 Kimi Code 2.1.1 在隔离目录中配合本地脚本化模型实测通过（Hook 归档、2,000 字符截断标 partial、MCP 找回、卸载还原）。已安装的 Codex 0.162.0-alpha.2 能读取本项目配置并发现 5 个 MCP 工具；捕获 hook 仍需用户信任，原生捕获闭环尚待验收。**真实模型下的 Kimi、Claude、Codex、OpenCode/Bun、RTK 实际二进制、远程 CI 和真实任务质量/账单对照仍未验收。**
 
 归档是本地明文，可能含源码和密钥，不要提交到 GitHub。默认不自动删除原文。演示的 **95.51%** 只是合成日志的字符缩减，不是任务费用或质量证明。

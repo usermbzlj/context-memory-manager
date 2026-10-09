@@ -12,7 +12,15 @@ Version 0.3.0-rc.2 / schema v4 / revised 2026-10-07.
 `src/mcp` provides a bounded tools-only stdio service/proxy. The private Node bridge avoids
 loading Node SQLite inside OpenCode's Bun process.
 
-No agent binary patch, provider MITM, dashboard, vector service, account or mandatory LLM exists.
+`src/management` provides scoped read DTOs, verified content/downloads and revision-checked settings.
+`src/dashboard` serves the bundled React UI over authenticated loopback HTTP. A dedicated Node
+worker owns SQLite operations and cooperative maintenance jobs. `src/observability` provides
+optional, bounded best-effort diagnostics while a dashboard lease is alive, never an archive.
+No agent binary patch, provider MITM, vector service, account or mandatory LLM exists.
+Optional native decision scoring uses a `systemone` retention provider and scorer. The transport
+posts typed questions, and the scorer validates and maps their probabilities before the existing
+protection/retention engine applies a decision. Native scoring never rewrites prose or changes
+host projection capabilities; provider/input failures retain the existing conservative fallback.
 The retained core is not discarded just to claim a rewrite. Optional scoring remains available;
 CLI filters belong upstream, not in another CMM filter registry.
 
@@ -42,6 +50,13 @@ Provenance is independent from integrity. A valid SHA-256 says our captured byte
 not that the upstream tool was unfiltered, complete, current or truthful. Host observations are
 unknown-completeness by default; recognized filters and truncation are explicit. RTK imports
 retain their own origin and complete/partial status, never replacing host evidence identities.
+
+Repeated observations of the same verified bytes may only add conservative partial/filtered
+restrictions; they cannot promote unknown/partial content to complete, replace an imported
+source's identity/digest, or change original bytes, event identity or capture stage. The private
+OpenCode bridge accepts late restrictions only for the same source invocation and exact original
+or hash-verified cached history view. It rechecks source existence under the writer transaction.
+New partial/filtered evidence restores recognized views and prevents new projection.
 
 ## Storage and migration
 

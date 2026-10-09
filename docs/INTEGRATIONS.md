@@ -84,6 +84,13 @@ This merges `.codex/hooks.json` and a marked `[mcp_servers.context_memory]` bloc
 `.codex/config.toml`. Review the project trust/hook approval flow in Codex, including `/hooks`
 when required. CMM never grants trust or changes sandbox/approval settings for you.
 
+On Windows, generated Codex hooks run in PowerShell using `&` and single-quoted literal
+arguments, preserving spaces, apostrophes, dollar signs and backticks in paths. Re-run setup
+to replace an older quoted-executable command that failed before starting Node. The changed
+definition must be reviewed/trusted again in Codex, then reloaded in the client/session.
+CLI, package and Windows smoke checks execute the generated command with isolated evidence;
+they are separate from a live Codex conversation's hook delivery.
+
 Current official docs expose `PostToolUse` with `tool_input`, `tool_response` and
 `tool_use_id`; the hook also runs for a completed shell command with a nonzero exit.
 Native CMM emits no stdout and does not change the result. It captures observable output
@@ -111,7 +118,10 @@ file beside it, and writes `.kimi-code/mcp.json` in the project. Each workspace 
 tables; uninstall removes only that workspace's tables and MCP entry. CMM identifies its tables
 by the `--managed-by-cmm` command, not by comments, so a Kimi rewrite that drops comments is
 still recognized. Hooks in another form (an inline `hooks = [...]` array) are refused rather
-than rewritten. Run `kimi` once first; setup refuses to create a missing config. `setup all`
+than rewritten. Configs with TOML triple-quoted values are also refused by setup and uninstall
+before any file is written: the local table editor cannot safely distinguish embedded hook
+examples from real tables. Maintain CMM hooks manually for that config shape. Triple quotes in
+comments or ordinary single-line strings are supported. Run `kimi` once first; setup refuses to create a missing config. `setup all`
 reports Kimi as skipped in that case.
 
 Because the hooks are user-level, they run in every project. A hook whose working directory
@@ -161,7 +171,7 @@ names are reserved; a conflicting upstream name produces an explicit error.
 
 This is **not** a general MCP transport gateway. It implements a deliberately bounded,
 tools-only stdio subset. Clients negotiate `2024-11-05` through `2025-11-25` with `initialize`;
-the proxy uses the same handshake upstream. The built-in memory server (`cmm mcp`) also answers
+the proxy uses the same handshake upstream. The built-in memory server (`cmm serve`) also answers
 stateless `2026-07-28` requests: `server/discover`, and `tools/list`/`tools/call` carrying the
 protocol version in `_meta`. A proxy does not offer the stateless revision to its clients.
 There is no Streamable HTTP/SSE, resource/prompt passthrough, roots, sampling, elicitation,

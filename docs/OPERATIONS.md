@@ -17,7 +17,9 @@ storage/
 ```
 
 An event ID is the unambiguous archive handle. Its original agent/workspace/session/tool-call
-provenance is immutable. Host session IDs are namespaced before storage. Recycled tool-call
+provenance is immutable. Later verified observations may add partial/filtered restrictions,
+but never improve completeness or change original bytes, identity, capture stage or an imported
+source digest. Host session IDs are namespaced before storage. Recycled tool-call
 IDs in different sessions are allowed; a retry with the same full identity but different
 content is a conflict, not a successful archive. Cross-session recall creates a view instead
 of reassigning the source event. `--shared` explicitly expands archive access across agents
@@ -52,17 +54,56 @@ Balanced is the default strategy. With no provider configured, deterministic fal
 functional and never fully evicts an event. Optional `providers.retention`, `providers.capsule`
 and `providers.chain` arrays use user-defined order. A provider entry has `kind`, `name`,
 `model`, optional `baseUrl`, and preferably `apiKeyEnv`. Supported kinds are `openai-compatible`,
-`anthropic`, `gemini` and the test-only `fake`. CMM does not subscribe to or resell a model.
+`anthropic`, `gemini`, retention-only `systemone`, and the test-only `fake`.
+CMM does not subscribe to or resell a model.
+
+OpenAI-compatible entries may set `reasoningEffort` to `none`, `low`, `medium`, `high`,
+or `max`, which is sent as `reasoning_effort`; omitted settings preserve server defaults.
+Check the chosen endpoint's supported values. DeepSeek V4.1 Flash uses model ID
+`deepseek-flash`, base URL `https://api.deepseek.com/v1`, and `reasoningEffort: "none"`
+for short capsule/chain JSON requests. Keep its key outside the repository, using
+`apiKeyEnv` or a private storage configuration. Restart persistent bridges after changes.
+
+For a local Clef-flash native decision server, set both sections together in `config.json`:
+
+```json
+{
+  "retention": { "scorer": "systemone" },
+  "providers": {
+    "retention": [{
+      "kind": "systemone",
+      "name": "clef-flash-local",
+      "model": "clef-flash-local",
+      "baseUrl": "http://127.0.0.1:18180/v1"
+    }],
+    "capsule": [],
+    "chain": []
+  }
+}
+```
+
+Merge these fields into the existing configuration, retaining its other settings. Start the
+model server, then restart persistent CMM bridges. `systemone` posts `state` and `questions`
+to `/v1/systemone` and maps each native `noul` probability to `safeToEvict`; it does not
+request chat text or supply capsule/chain summaries. Descriptors and current-task hints,
+not complete archived outputs, form the scoring state. Up to eight events share a call;
+larger history batches keep every event and use bounded groups. A 2,600-token input estimate
+leaves room within the deployed 4K model context. Oversized descriptors, actual context-limit
+errors, timeouts and invalid probabilities use conservative fallback without retrying a
+failed request. The HTTP transport connects directly even when proxy environment variables
+are set. Model probabilities are not a task-quality or calibration guarantee. Native Codex
+hooks remain capture-only regardless of which scorer is configured.
 
 A local OpenAI-compatible loopback endpoint can omit authentication. Remote endpoints require
 an API key. Invalid provider JSON triggers the next configured provider. Invalid custom scores
-fall back conservatively. No paid-model endpoint was exercised in the local validation.
+fall back conservatively. Dated validation records distinguish offline/local checks from the
+2026-10-09 DeepSeek capsule/chain smoke using synthetic data.
 Provider token counts are recorded when reported; legacy numerical `cost_usd` fields are now
 **unpriced zero sentinels**, not free requests or measured billing. Old ledger rows may contain
 v0.1 heuristic prices. The new CLI avoids presenting them as accurate spending.
 
 `captureOnly` disables projection, not capture. To stop capture, uninstall the managed adapter
-and restart the host; for Kimi, stop using the launch wrapper. Never delete a live database to
+and restart the host; Kimi uninstall removes only this workspace's user-level hook tables. Never delete a live database to
 turn a feature off.
 
 ## Diagnosis and recovery
@@ -155,5 +196,6 @@ files; delete stale ones only after checking no corresponding process is running
 
 On Windows, normal paths with spaces are quoted. Shell metacharacters such as `%`, `!`, `&`
 and quotes in generated command paths are refused rather than guessed at. Use an ordinary
-installation/project path. This release has unit checks for quoting but no Windows desktop
-session was available during local development.
+installation/project path. Windows CLI/package checks and the installed Kimi host smoke are
+recorded in `RELEASE_VALIDATION.md`; they do not certify every host's command execution or
+interactive trust flow.

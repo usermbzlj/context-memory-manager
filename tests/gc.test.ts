@@ -17,6 +17,7 @@ import {
   pressured,
 } from './util.js';
 import type { ContextManager } from '../src/core/context-manager.js';
+import { eventProtectionReason } from '../src/core/protection.js';
 
 describe('archive gc', () => {
   let manager: ContextManager;
@@ -112,6 +113,35 @@ describe('archive gc', () => {
     const res = await manager.gc();
     assert.equal(res.deletedEvents, 0);
     assert.ok(getEventByCallId(manager, 'cap-me'));
+  });
+
+  it('keeps truly evicted evidence when its source chain becomes active again until freshness expires', async () => {
+    manager.config.storage.maxSizeBytes = 1;
+    await manager.recordToolComplete(sampleInput({ toolCallId: 'chain-edit', toolName: 'Edit', input: 'src/a.ts', result: 'Edited src/a.ts' }));
+    await manager.recordToolComplete(sampleInput({ toolCallId: 'chain-test', input: 'npm test', result: '1 passed, 1 failed', status: 'error' }));
+    await manager.recordToolComplete(sampleInput({ toolCallId: 'old-read', toolName: 'Read', input: 'src/a.ts', result: 'important evidence' }));
+    for (let i = 0; i < 18; i++) {
+      await manager.recordToolComplete(sampleInput({ toolCallId: `age-${i}`, toolName: 'Glob', input: 'no-path', result: 'tiny' }));
+    }
+    const old = getEventByCallId(manager, 'old-read')!;
+    assert.ok(old.chainId);
+    assert.equal(eventProtectionReason(manager.db, manager.db.getToolEvent(old.id)!, 3), undefined);
+    manager.retention.primary = { name: 'fixed-test-score', async score() { return 1; } };
+    const decision = await manager.retention.decide(old, { pressure: 1 });
+    assert.equal(decision.decision, 'evict', 'the old evidence must be evicted by the real retention path');
+    await manager.recordToolComplete(sampleInput({ toolCallId: 'current-read', toolName: 'Read', input: 'src/a.ts', result: 'working again' }));
+    assert.equal(getEventByCallId(manager, 'current-read')?.chainId, old.chainId);
+    assert.equal(getEventByCallId(manager, 'old-read')?.state, 'evicted');
+    assert.equal(eventProtectionReason(manager.db, manager.db.getToolEvent(old.id)!, 3), 'chain-active');
+    assert.equal((await manager.gc()).deletedEvents, 0);
+    assert.equal((await manager.archive.fetchOriginal(old.id)).result, 'important evidence');
+
+    for (let i = 0; i < 4; i++) {
+      await manager.recordToolComplete(sampleInput({ toolCallId: `expire-${i}`, toolName: 'Glob', input: 'no-path', result: 'tiny' }));
+    }
+    assert.equal(eventProtectionReason(manager.db, manager.db.getToolEvent(old.id)!, 3), undefined);
+    assert.equal((await manager.gc()).deletedEvents, 1, 'inactive unpinned evidence becomes eligible again');
+    assert.equal(manager.db.getToolEvent(old.id), undefined);
   });
 
   it('removes blob files only when no event references them', async () => {

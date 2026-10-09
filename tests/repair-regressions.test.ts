@@ -102,6 +102,44 @@ test('explicit partial provenance is retained when RTK command detection applies
   assert.equal(provenance.completeness, 'partial');
 });
 
+test('reindex does not republish evidence retired while its original read was pending', async t => {
+  const { manager, service } = await fixture(t);
+  manager.config.storage.maxSizeBytes = 1;
+  const id = (await service.capture({ sessionId: 's', toolCallId: 'retiring', toolName: 'Read', input: 'x', result: raw })).eventId!;
+  manager.db.updateToolEvent(id, { state: 'evicted', protected_until_turn: 0 });
+  const fetch = manager.archive.fetchOriginal.bind(manager.archive);
+  manager.archive.fetchOriginal = async eventId => {
+    const original = await fetch(eventId);
+    assert.equal((await manager.gc()).deletedEvents, 1);
+    return original;
+  };
+  const verification = await service.verify(true);
+  assert.equal(verification.failed, 0, 'retirement is not archive corruption');
+  assert.equal(verification.checked, 0, 'a retired event is skipped');
+  assert.equal(manager.db.getToolEvent(id), undefined);
+  assert.ok(manager.db.queryOne('SELECT event_id FROM archive_tombstones WHERE event_id=?', [id]));
+  for (const table of ['evidence_chunks', 'evidence_index', 'archive_search']) {
+    assert.equal(manager.db.queryOne(`SELECT event_id FROM ${table} WHERE event_id=?`, [id]), undefined,
+      `${table} must remain retired`);
+  }
+});
+
+test('pin rejects an event retired while its original read was pending without creating an orphan pin', async t => {
+  const { manager, service } = await fixture(t);
+  manager.config.storage.maxSizeBytes = 1;
+  const id = (await service.capture({ sessionId: 's', toolCallId: 'retiring', toolName: 'Read', input: 'x', result: raw })).eventId!;
+  manager.db.updateToolEvent(id, { state: 'evicted', protected_until_turn: 0 });
+  const fetch = manager.archive.fetchOriginal.bind(manager.archive);
+  manager.archive.fetchOriginal = async eventId => {
+    const original = await fetch(eventId);
+    assert.equal((await manager.gc()).deletedEvents, 1);
+    return original;
+  };
+  await assert.rejects(() => service.pin(id, true), /not available.*explicitly deleted/i);
+  assert.equal(manager.db.getToolEvent(id), undefined);
+  assert.deepEqual(manager.db.listPinsForTarget('event', id), []);
+});
+
 test('legacy Windows workspace and host session identities remain readable and idempotent', async t => {
   const { manager, dir } = await makeManager();
   t.after(() => cleanup(dir, manager));

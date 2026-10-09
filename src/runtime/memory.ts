@@ -1,4 +1,4 @@
-import { provenanceFor, evidenceNotice, type EvidenceProvenance } from '../evidence/provenance.js';
+import { provenanceFor, evidenceNotice, mergeObservedProvenance, validateProvenance, type EvidenceProvenance } from '../evidence/provenance.js';
 import { indexEvidence, indexCoverage, safeEnd } from '../evidence/index.js';
 import { searchEvidence } from '../evidence/search.js';
 import { sha256 } from '../storage/blob-store.js';
@@ -12,10 +12,13 @@ import { integer, text, errorMessage, utf8 } from '../util/validation.js';
 import { activePreset } from '../config.js';
 import { projectionSource, validateProjectionReceipt, type ProjectionReceipt } from './projection-receipt.js';
 import { eventProtectionReason } from '../core/protection.js';
+import { setImmediate as yieldImmediate } from 'node:timers/promises';
 
 export interface MemoryScope {agent: string; workspaceId: string; shared?: boolean}
 export interface Capture {sessionId: string; toolCallId?: string; toolName: string; input: string; result: string; status?: 'ok'|'error'; sideEffect?: boolean; provenance?: EvidenceProvenance}
 export interface Projection {eventId: string; originalChars: number; visibleChars: number; replaced: boolean; text: string; reason: string; cacheHit?: boolean}
+export interface VerificationProgress {checked:number;total:number;projectionChecked:number;projectionTotal:number}
+export interface VerificationOptions {signal?:AbortSignal;onProgress?:(progress:VerificationProgress)=>void}
 
 /** Host session IDs are not globally unique; never mix two agents or projects. */
 export function sessionKey(scope: MemoryScope, hostSession: string): string {
@@ -56,6 +59,13 @@ export class MemoryService {
     return row;
   }
   async capture(input: Capture, mode = 'capture') {
+    return this.manager.runtime.withScope(this.scope,async () => {
+      const end=this.manager.runtime.operation({kind:'capture'});
+      try { const saved=await this.captureObserved(input,mode);end({status:saved.archived?'ok':'error',eventId:saved.eventId ?? undefined});return saved; }
+      catch (error) {end({status:'error'});throw error;}
+    });
+  }
+  private async captureObserved(input: Capture, mode: string) {
     const hostSession = text(input.sessionId,'sessionId');
     const record: ToolEventInput = {
       ...input, agent:this.scope.agent, workspaceId:this.scope.workspaceId,
@@ -90,6 +100,38 @@ export class MemoryService {
     const sid=this.hostSessionId(sessionId);
     const row=this.manager.db.getToolEventByCallId(this.scope.agent,this.scope.workspaceId,text(toolCallId,'toolCallId'),sid);
     return row && row.tool_name===text(toolName,'toolName') ? {eventId:row.id} : null;
+  }
+  /** Private bridge observation: restrict an existing source without recapturing a visible projection. */
+  async observeProvenance(input: {sessionId:string;toolCallId:string;toolName:string;output:string;provenance:EvidenceProvenance}) {
+    const sid = this.hostSessionId(text(input.sessionId, 'sessionId'));
+    const call = text(input.toolCallId, 'toolCallId');
+    const tool = text(input.toolName, 'toolName');
+    const observed = validateProvenance(input.provenance);
+    if (observed.captureStage !== 'host-result' ||
+        !['tool-observation','upstream-filtered'].includes(observed.origin) ||
+        (observed.completeness !== 'partial' && observed.origin !== 'upstream-filtered'))
+      throw new Error('An observation can only add partial or filtered host-result restrictions');
+    utf8(input.output, 'observed output');
+    const row = this.manager.db.getToolEventByCallId(this.scope.agent, this.scope.workspaceId, call, sid);
+    if (!row || row.tool_name !== tool) throw new Error('Observation does not match an archived source invocation');
+    const raw = await this.manager.archive.fetchOriginal(row.id);
+    this.manager.db.transaction(() => {
+      const fresh = this.event(row.id);
+      if (fresh.agent !== this.scope.agent || fresh.session_id !== sid || fresh.tool_call_id !== call || fresh.tool_name !== tool ||
+          fresh.result_sha !== row.result_sha || fresh.input_sha !== row.input_sha)
+        throw new Error('Archived source invocation changed before observation');
+      if (input.output !== raw.result) {
+        const receipt = this.manager.db.queryOne<ProjectionReceipt>(
+          'SELECT * FROM projection_cache WHERE event_id=? AND session_id=? AND mode=? AND representation=?',
+          [row.id,sid,'history','text']);
+        if (!receipt || input.output !== receipt.text) throw new Error('Observation output is not the source or a recognized projection');
+        validateProjectionReceipt(this.manager.db,fresh,receipt,raw.result);
+      }
+      const merged = mergeObservedProvenance(provenanceFor(this.manager.db,row.id), observed);
+      this.manager.db.run('INSERT INTO evidence_provenance(event_id,json) VALUES(?,?) ON CONFLICT(event_id) DO UPDATE SET json=excluded.json',
+        [row.id,JSON.stringify(merged)]);
+    });
+    return {eventId:row.id};
   }
   health(mode: string, error: string | null = null): void {
     this.manager.db.run(`INSERT INTO integration_health(agent,workspace_id,mode,last_seen,observations,last_error)
@@ -156,12 +198,20 @@ export class MemoryService {
       // A pin is meaningful even if the event was already compressed.
       await this.manager.archive.fetchOriginal(id);
       this.manager.db.transaction(() => {
+        // GC can retire the source while the verified read is pending. Recheck
+        // scope and existence under the writer lock before publishing a pin.
+        const fresh=this.event(id);
+        if (fresh.agent !== this.scope.agent) throw new Error('Cross-agent shared access is read-only; use the source agent scope to pin');
         this.manager.db.insertPin('event',id,null,true);
         this.manager.db.updateToolEvent(id,{pinned:1,persistent_pin:1,state:'hot'});
       });
     } else {
-      this.manager.db.deletePin('event',id);
-      this.manager.db.updateToolEvent(id,{pinned:0,persistent_pin:0});
+      this.manager.db.transaction(() => {
+        const fresh=this.event(id);
+        if (fresh.agent !== this.scope.agent) throw new Error('Cross-agent shared access is read-only; use the source agent scope to pin');
+        this.manager.db.deletePin('event',id);
+        this.manager.db.updateToolEvent(id,{pinned:0,persistent_pin:0});
+      });
     }
     return {eventId:id,pinned,scope:'all sessions for this event',sourceSession:row.session_id};
   }
@@ -370,36 +420,66 @@ export class MemoryService {
       decisions:this.manager.db.queryAll('SELECT * FROM decisions WHERE event_id=? ORDER BY id DESC LIMIT 20',[id]),
       pins:this.manager.db.listPinsForTarget('event',id)};
   }
-  async verify(reindex = false) {
+  async verify(reindex = false, options: VerificationOptions = {}) {
+    const end=this.manager.runtime.operation({kind:reindex?'reindex':'verify',scope:this.scope});
+    try { const result=await this.verifyObserved(reindex,options);end({status:result.failed?'error':'ok'});return result; }
+    catch (error) {end({status:options.signal?.aborted?'cancelled':'error'});throw error;}
+  }
+  private async verifyObserved(reindex: boolean, options: VerificationOptions) {
     const where = this.where();
     let checked=0,failed=0;const failures:{eventId:string;error:string}[]=[];
     const rows=this.manager.db.queryAll<ToolEventRow>(`SELECT * FROM tool_events WHERE ${where.sql} ORDER BY id`,where.params);
+    let visited=0,projectionChecked=0,projectionFailed=0,projectionTotal=0;
+    const progress=() => {
+      options.signal?.throwIfAborted();
+      options.onProgress?.({checked:visited,total:rows.length,projectionChecked,projectionTotal});
+      options.signal?.throwIfAborted();
+    };
+    progress();
     for (const row of rows) {
+      options.signal?.throwIfAborted();
       try {
         const raw=await this.manager.archive.fetchOriginal(row.id);
-        if (reindex) this.manager.db.transaction(() => {
+        options.signal?.throwIfAborted();
+        if (reindex && !this.manager.db.transaction(() => {
+          // A concurrent GC may retire this event after the verified read.
+          // Do not republish its derived text or report retirement as corruption.
+          const fresh=this.manager.db.queryOne<ToolEventRow>(
+            `SELECT * FROM tool_events WHERE id=? AND ${where.sql}`,[row.id,...where.params]);
+          if (!fresh) return false;
           indexEvidence(this.manager.db,row.id,raw.input,raw.result);
           this.manager.db.run('DELETE FROM archive_search WHERE event_id=?',[row.id]);
           this.manager.db.run('INSERT INTO archive_search(event_id,agent,workspace,tool,body) VALUES(?,?,?,?,?)',
             [row.id,row.agent,row.workspace_id,row.tool_name,searchBody(raw.input,raw.result,JSON.parse(row.descriptor_json))]);
-        });
-        checked++;
-      } catch (error) {failed++;if(failures.length<50) failures.push({eventId:row.id,error:errorMessage(error)});}
+          return true;
+        })) { /* A retired record is skipped, never reported as corruption. */ }
+        else checked++;
+      } catch (error) {
+        options.signal?.throwIfAborted();
+        failed++;if(failures.length<50) failures.push({eventId:row.id,error:errorMessage(error)});
+      }
+      visited++;
+      if (visited%8===0) {progress();await yieldImmediate();options.signal?.throwIfAborted();}
     }
-    let projectionChecked=0, projectionFailed=0;
     const pwhere=this.where('e');
     const receipts=this.manager.db.queryAll<ProjectionReceipt>(
       `SELECT p.* FROM projection_cache p JOIN tool_events e ON e.id=p.event_id WHERE ${pwhere.sql}`,pwhere.params);
+    projectionTotal=receipts.length;progress();
     for (const receipt of receipts) {
+      options.signal?.throwIfAborted();
       projectionChecked++;
       try {
         const row=this.event(receipt.event_id);
         const raw=await this.manager.archive.fetchOriginal(row.id);
+        options.signal?.throwIfAborted();
         validateProjectionReceipt(this.manager.db,row,receipt,raw.result);
       } catch (error) {
+        options.signal?.throwIfAborted();
         projectionFailed++; if(failures.length<50) failures.push({eventId:receipt.event_id,error:errorMessage(error)});
       }
+      if (projectionChecked%8===0) {progress();await yieldImmediate();options.signal?.throwIfAborted();}
     }
+    progress();
     failed+=projectionFailed;
     const integrity = this.manager.db.queryAll<Record<string,unknown>>('PRAGMA quick_check');
     const databaseIntegrityOk=integrity.length===1 && Object.values(integrity[0]).every(v=>v==='ok');

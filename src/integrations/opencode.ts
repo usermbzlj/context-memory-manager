@@ -29,29 +29,40 @@ export async function createOpenCodePlugin(input:{directory:string;worktree?:str
   let client:Bridge|undefined=options.bridge;
   let disposed=false;let disposal:Promise<void>|undefined;
   let warned=false;
-  const cache=new Map<string,string>();const windows=new Map<string,number>();
+  const cache=new Map<string,{eventId:string;partial:boolean}>();const windows=new Map<string,number>();
   const presented=new Set<string>();
   const key=(session:string,call:string)=>JSON.stringify([session,call]);
-  const remember=(key:string,id:string)=>{cache.set(key,id);if(cache.size>4096)cache.delete(cache.keys().next().value!);};
+  const remember=(key:string,id:string,partial=false)=>{cache.set(key,{eventId:id,partial});if(cache.size>4096)cache.delete(cache.keys().next().value!);};
   const bridge=()=>{
     if(disposed)throw new Error('OpenCode CMM plugin is disposed');
     return client ??= new RpcClient(options.node,[options.cli,'bridge','--agent','opencode','--workspace',workspace,'--storage',options.storage],{cwd:workspace});
   };
   const warn=(error:unknown)=>{if(!warned){warned=true;process.stderr.write(`[cmm] Capture/projection unavailable; tool outputs unchanged. Run cmm doctor. ${errorMessage(error).slice(0,200)}\n`);}};
   const capture=async(session:string,call:string,tool:string,args:unknown,result:string,metadata?:Record<string,unknown>)=>{
-    const k=key(session,call);if(cache.has(k))return cache.get(k)!;
+    const k=key(session,call);
+    const partial=metadata?.truncated===true;
+    const provenance={version:1,origin:'tool-observation',captureStage:'host-result',completeness:'partial',
+      notes:['OpenCode reported metadata.truncated=true; omitted source content was not captured.']};
+    const observe=async(id:string)=>{
+      await bridge().request('observeProvenance',{sessionId:session,toolCallId:call,toolName:tool,output:result,provenance});
+      remember(k,id,true);return id;
+    };
+    const cached=cache.get(k);
+    if(cached)return partial && !cached.partial ? observe(cached.eventId) : cached.eventId;
     if(result.startsWith('[CMM archive ')) {
       const prior=await bridge().request<{eventId:string}|null>('lookup',{sessionId:session,toolCallId:call,toolName:tool});
-      if(prior && result.startsWith(`[CMM archive ${prior.eventId}]`)) {remember(k,prior.eventId);return prior.eventId;}
+      if(prior && result.startsWith(`[CMM archive ${prior.eventId}]`)) {
+        if(partial)return observe(prior.eventId);
+        remember(k,prior.eventId);return prior.eventId;
+      }
     }
     const response=await bridge().request<{archived:boolean;eventId:string|null;error?:string}>('capture',{
       sessionId:session,toolCallId:call,toolName:tool,input:typeof args==='string'?args:stableJson(args ?? {}),result,
       status:metadata && [metadata.exit,metadata.exitCode,metadata.exit_code].some(n=>typeof n==='number' && n!==0)?'error':'ok',
-      ...(metadata?.truncated===true ? {provenance:{version:1,origin:'tool-observation',captureStage:'host-result',
-        completeness:'partial',notes:['OpenCode reported metadata.truncated=true; omitted source content was not captured.']}} : {}),
+      ...(partial ? {provenance} : {}),
     });
     if(!response.archived || !response.eventId)throw new Error(response.error ?? 'Capture did not produce a durable event');
-    remember(k,response.eventId);return response.eventId;
+    remember(k,response.eventId,partial);return response.eventId;
   };
   const tools:Record<string,unknown>={};
   for(const definition of MEMORY_TOOLS) {

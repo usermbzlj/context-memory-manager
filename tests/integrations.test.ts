@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { parseHook, executeHook, errorStatus, KIMI_OUTPUT_LIMIT } from '../src/integrations/hooks.js';
-import { planSetup, planUninstall, applySetup, replaceManagedBlock, shellQuote, upsertKimiHooks, MissingHostConfig, type SetupOptions } from '../src/integrations/setup.js';
+import { planSetup, planUninstall, applySetup, replaceManagedBlock, shellQuote, hookCommand, upsertKimiHooks, MissingHostConfig, type SetupOptions } from '../src/integrations/setup.js';
 import { createOpenCodePlugin, openCodeWorkspace, type OpenCodeToolFactory } from '../src/integrations/opencode.js';
 import { MemoryService } from '../src/runtime/memory.js';
 import { windowsBatchLine } from '../src/util/spawn.js';
@@ -97,6 +97,53 @@ test('Codex TOML surgical merge preserves user bytes and has no approval bypass'
   const o:SetupOptions={agent:'codex',workspace:dir,storage:dir,cli};applySetup(planSetup(o));const after=fs.readFileSync(cfg,'utf8');assert.ok(after.startsWith(before));assert.match(after,/\[mcp_servers.context_memory\]/);assert.ok(!after.includes('approval_policy'));
   assert.equal(applySetup(planSetup(o)).written.length,0);
 });
+test('Codex Windows hooks quote PowerShell literals while other shells retain their command form',()=>{
+  const opts:SetupOptions={agent:'codex',workspace:"C:\\project's $HOME ` & (中文)",storage:'C:\\archive',cli:'C:\\cmm\\cli.js',node:'C:\\Program Files\\nodejs\\node.exe',platform:'win32'};
+  assert.match(hookCommand(opts),/^& 'C:\\Program Files\\nodejs\\node\.exe'/);
+  assert.ok(hookCommand(opts).includes("'C:\\project''s $HOME ` & (中文)'"));
+  assert.ok(!hookCommand({...opts,agent:'kimi',workspace:'C:\\project'}).startsWith('& '));
+  assert.ok(!hookCommand({...opts,platform:'linux'}).startsWith('& '));
+  assert.throws(()=>hookCommand({...opts,storage:'bad\npath'}),/Newlines\/NUL/);
+});
+test('generated Codex hook upgrades the old command and archives through real Windows PowerShell', {skip:process.platform!=='win32'},async t=>{
+  const {dir}=await fixture(t,'codex');
+  const workspace=path.join(dir,"project 中文's $HOME ` & (fixture)"),storage=path.join(dir,"archive's $HOME ` & (fixture)");
+  fs.mkdirSync(path.join(workspace,'.codex'),{recursive:true});
+  const file=path.join(workspace,'.codex','hooks.json');
+  const legacy={type:'command',command:'"node" "cli.js" hook codex --managed-by-cmm',timeout:15};
+  const unrelated={type:'command',command:'keep-this-hook'};
+  fs.writeFileSync(file,JSON.stringify({hooks:{PostToolUse:[{hooks:[legacy]},{matcher:'Read',hooks:[unrelated]}]}}));
+  const opts:SetupOptions={agent:'codex',workspace,storage,cli};
+  const installed=applySetup(planSetup(opts));assert.equal(installed.backups.length,1);
+  const groups=JSON.parse(fs.readFileSync(file,'utf8')).hooks.PostToolUse;
+  assert.equal(groups.length,2);assert.deepEqual(groups[0].hooks,[unrelated]);
+  const command=groups.at(-1).hooks[0].command;
+  assert.equal(applySetup(planSetup(opts)).written.length,0);
+  const original="exact 中🚀\r\n$HOME ` & ' evidence\n";
+  const executedShells:string[]=[];
+  for(const shell of ['pwsh.exe','powershell.exe']) {
+    const probe=spawnSync(shell,['-NoLogo','-NoProfile','-NonInteractive','-Command','$PSVersionTable.PSVersion.ToString()'],{encoding:'utf8',timeout:10000});
+    if(probe.error && (probe.error as NodeJS.ErrnoException).code==='ENOENT' && shell==='pwsh.exe')continue;
+    assert.equal(probe.status,0,probe.stderr);
+    const p=payload(workspace,{tool_name:'exec_command',tool_use_id:shell,tool_response:original});
+    const executed=spawnSync(shell,['-NoLogo','-NoProfile','-NonInteractive','-Command',command],{input:JSON.stringify(p),encoding:'utf8',timeout:15000});
+    assert.equal(executed.status,0,executed.stderr);assert.equal(executed.stdout,'');assert.equal(executed.stderr,'');
+    executedShells.push(shell);
+  }
+  const scope=['--agent','codex','--workspace',workspace,'--storage',storage];
+  const found=run(['search',...scope]);assert.equal(found.status,0,found.stderr);
+  const results=JSON.parse(found.stdout).results;assert.equal(results.length,executedShells.length);
+  assert.deepEqual(results.map((item:any)=>item.toolCallId).sort(),executedShells.sort());
+  for(const item of results) {
+    const recalled=run(['recall',item.eventId,...scope]);assert.equal(recalled.status,0,recalled.stderr);
+    assert.equal(JSON.parse(recalled.stdout).text,original);
+  }
+  const verified=run(['verify',...scope]);assert.equal(verified.status,0,verified.stderr);
+  assert.equal(JSON.parse(verified.stdout).failed,0);
+  assert.equal(JSON.parse(verified.stdout).checked,executedShells.length);
+  applySetup(planUninstall(opts));
+  assert.deepEqual(JSON.parse(fs.readFileSync(file,'utf8')).hooks.PostToolUse,[{matcher:'Read',hooks:[unrelated]}]);
+});
 test('a config changed after planning is not overwritten',async t=>{
   const {dir}=await fixture(t);const changes=planSetup({agent:'claude',workspace:dir,storage:dir,cli});fs.mkdirSync(path.dirname(changes[0].file),{recursive:true});fs.writeFileSync(changes[0].file,'{"edited":true}');
   assert.throws(()=>applySetup(changes),/changed/);assert.equal(fs.readFileSync(changes[0].file,'utf8'),'{"edited":true}');assert.equal(fs.existsSync(changes[1].file),false);
@@ -129,6 +176,31 @@ test('Kimi hooks are recognized after a comment-dropping rewrite; unsafe forms a
   const rewritten=upsertKimiHooks('model = "m"\n',opts).replace(/^#.*\n/gm,'').replace(/^command = "(.*)"$/gm,(_m,v)=>`command = '${JSON.parse('"'+v+'"')}'`);
   fs.writeFileSync(config,rewritten);applySetup(planUninstall(opts));assert.equal(fs.readFileSync(config,'utf8'),'model = "m"\n');
   fs.writeFileSync(config,'hooks = [{event = "Stop", command = "x"}]\n');assert.throws(()=>planSetup(opts),/table form/);
+});
+test('Kimi setup and uninstall refuse multiline TOML values without changing user files',async t=>{
+  const {dir}=await fixture(t);const home=path.join(dir,'kimi-home');fs.mkdirSync(home);const config=path.join(home,'config.toml');
+  const opts:SetupOptions={agent:'kimi',workspace:dir,storage:dir,cli,kimiHome:home};
+  const managed=upsertKimiHooks('model = "existing"\n',opts),command=managed.split('\n').find(line=>line.startsWith('command = '))!;
+  const mcp=path.join(dir,'.kimi-code','mcp.json'),mcpBefore='{"mcpServers":{"unrelated":{"command":"keep-me"}}}\n';
+  fs.mkdirSync(path.dirname(mcp));fs.writeFileSync(mcp,mcpBefore);
+  for(const delimiter of ["'''",'"""']) {
+    // Even real managed tables must remain untouched when another value could
+    // make line-based table discovery mistake a quoted example for a hook.
+    const before=managed+`\n[fixture]\nnote = ${delimiter}\n[[hooks]]\n${command}\n${delimiter}\nmodel = "preserve-this-too"\n`;
+    fs.writeFileSync(config,before);
+    for(const plan of [planSetup,planUninstall]) {
+      assert.throws(()=>applySetup(plan(opts)),/TOML multiline strings/);
+      assert.equal(fs.readFileSync(config,'utf8'),before);assert.equal(fs.readFileSync(mcp,'utf8'),mcpBefore);
+      assert.deepEqual(fs.readdirSync(home),['config.toml'],'refusal must not create backups or partial edits');
+    }
+  }
+});
+test('Kimi TOML guard permits triple quotes in comments and ordinary single-line strings',async t=>{
+  const {dir}=await fixture(t);const home=path.join(dir,'kimi-home');fs.mkdirSync(home);const config=path.join(home,'config.toml');
+  const opts:SetupOptions={agent:'kimi',workspace:dir,storage:dir,cli,kimiHome:home};
+  const before='# """ and '+"'''"+' in a comment\nliteral = '+"'\"\"\"'"+'\nbasic = '+JSON.stringify('"""')+'\nmodel = "existing"\n';
+  fs.writeFileSync(config,before);applySetup(planSetup(opts));applySetup(planUninstall(opts));
+  assert.equal(fs.readFileSync(config,'utf8'),before);
 });
 test('Kimi 2,000-unit tool_output prefixes are partial evidence and are never projected again',async t=>{
   const {service,dir}=await fixture(t,'kimi');service.manager.config.integration.ingressCompression=true;

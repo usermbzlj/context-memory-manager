@@ -12,6 +12,7 @@ export async function serveBridge(service:MemoryService,input:Readable=process.s
     switch(method) {
       case 'ping': return {ok:true};
       case 'lookup': return service.lookup(text(p.sessionId,'sessionId'),text(p.toolCallId,'toolCallId'),text(p.toolName,'toolName'));
+      case 'observeProvenance': return service.observeProvenance(p as unknown as Parameters<MemoryService['observeProvenance']>[0]);
       case 'capture': return service.capture(p as unknown as Capture,'opencode');
       case 'captureBatch': {
         if(!Array.isArray(p.items) || p.items.length>1000)throw new RpcError(-32602,'Invalid capture batch');

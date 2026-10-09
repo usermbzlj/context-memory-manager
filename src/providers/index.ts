@@ -7,6 +7,7 @@ import { OpenAICompatibleProvider } from './openai-compatible.js';
 import { AnthropicProvider } from './anthropic.js';
 import { GeminiProvider } from './gemini.js';
 import { FakeProvider } from './fake.js';
+import { SystemOneProvider } from './systemone.js';
 
 export function buildProviders(configs: ProviderConfig[]): ModelProvider[] {
   return configs.map((cfg) => {
@@ -19,6 +20,8 @@ export function buildProviders(configs: ProviderConfig[]): ModelProvider[] {
         return new GeminiProvider(cfg);
       case 'fake':
         return new FakeProvider(cfg.name, '{"safeToEvict":0.5}');
+      case 'systemone':
+        return new SystemOneProvider(cfg);
       default: {
         const unknownKind = (cfg as { kind?: string }).kind;
         throw new Error(`unknown provider kind: ${unknownKind}`);

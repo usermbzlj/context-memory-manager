@@ -103,6 +103,23 @@ test('the actual CLI proxy exposes memory plus upstream tools',async t=>{
   const call=await peer.request('tools/call',{name:'large',arguments:{}});assert.match(call.result.content[0].text,/^\[CMM archive /);
 });
 
+test('the actual CLI proxy rejects stateless requests before upstream tool execution',async t=>{
+  const {manager,dir}=await makeManager();t.after(()=>cleanup(dir,manager));const count=path.join(dir,'proxy-call-count');
+  const peer=new RawPeer(process.execPath,[cli,'proxy','--storage',dir,'--workspace',dir,'--agent','codex','--',process.execPath,upstream,count]);registerCleanup(manager,()=>peer.close());
+  const meta={_meta:{'io.modelcontextprotocol/protocolVersion':'2026-07-28'}};
+  assert.equal((await peer.request('server/discover',meta)).error.code,-32601);
+  for(const [method,params] of [['tools/list',meta],['tools/call',{...meta,name:'side_effect',arguments:{}}]] as const) {
+    const failure=(await peer.request(method,params)).error;
+    assert.equal(failure.code,-32022);assert.equal(failure.data.requested,'2026-07-28');
+    assert.deepEqual(failure.data.supported,['2025-11-25','2025-06-18','2025-03-26','2024-11-05']);
+  }
+  assert.equal(fs.existsSync(count),false,'rejected stateless calls must never reach the upstream tool');
+  assert.equal((await peer.request('tools/list')).error.code,-32002);
+  assert.equal((await peer.init()).result.protocolVersion,'2025-06-18');
+  assert.equal((await peer.request('tools/call',{name:'small',arguments:{}})).result.content[0].text,'small');
+  assert.equal(fs.readFileSync(count,'utf8'),'1','legacy forwarding remains exactly once');
+});
+
 test('fixture cleanup closes an actual SQLite child even when another resource cleanup fails',async t=>{
   const {manager,dir}=await makeManager();t.after(()=>cleanup(dir,manager));
   const peer=new RawPeer(process.execPath,[cli,'serve','--storage',dir,'--workspace',dir]);

@@ -18,6 +18,13 @@ import { ProviderError } from './provider.js';
 import { errorMessage } from '../util/validation.js';
 import { redact } from '../logging.js';
 
+export type ProviderAttemptObserver = (attempt: {purpose: 'retention'|'capsule'|'chain';provider: string}) =>
+  ((result: {status: 'ok'|'error'; model?: string}) => void);
+// Weak keys keep observers local to their configured provider instances. No
+// process-global current manager, storage, request text or credentials are held.
+const observers = new WeakMap<ModelProvider,ProviderAttemptObserver>();
+export function observeProvider(provider: ModelProvider, observer: ProviderAttemptObserver): void { observers.set(provider,observer); }
+
 export async function completeWithFailover(
   providers: ModelProvider[],
   req: CompletionRequest,
@@ -26,6 +33,7 @@ export async function completeWithFailover(
     recordCall: (r: ProviderCallRecord) => void;
     logger: Logger;
     validate?: (response: CompletionResponse) => void;
+    observe?: ProviderAttemptObserver;
   },
 ): Promise<CompletionResponse> {
   if (providers.length === 0) {
@@ -37,6 +45,9 @@ export async function completeWithFailover(
   for (let i = 0; i < providers.length; i++) {
     const p = providers[i];
     let received: CompletionResponse | undefined;
+    let attemptOk = false;
+    let end: ReturnType<ProviderAttemptObserver> | undefined;
+    try { end=(opts.observe ?? observers.get(p))?.({purpose,provider:p.name}); } catch { /* Diagnostics never affect failover. */ }
     try {
       const res = received = await p.complete(req);
       opts.validate?.(res);
@@ -50,6 +61,7 @@ export async function completeWithFailover(
         ok: true,
       });
       if (i > 0) logger.log('provider switched', { purpose, to: p.name });
+      attemptOk = true;
       return res;
     } catch (e) {
       recordCall({
@@ -68,6 +80,8 @@ export async function completeWithFailover(
         error: String(redact(errorMessage(e))),
       });
       lastError = e;
+    } finally {
+      try { end?.({status:attemptOk?'ok':'error',model:received?.model}); } catch { /* fail-open */ }
     }
   }
 

@@ -29,6 +29,9 @@ function modernVersion(params:unknown):string|undefined {
  */
 export async function serveMemory(service:MemoryService,options:{input?:Readable;output?:Writable;backend?:ToolBackend}={}) {
   let initialized=false,ready=false;
+  // The tools-only proxy negotiates legacy MCP upstream. Do not accidentally
+  // expose the memory server's stateless contract through that legacy backend.
+  const supported=options.backend ? LEGACY_PROTOCOLS.toReversed() : SUPPORTED;
   const listTools=async()=>{
     const extra=options.backend ? await options.backend.list() : [];
     if(extra.some(t=>MEMORY_TOOLS.some(m=>m.name===t.name))) throw new RpcError(-32000,'Upstream tool name collides with a reserved memory tool');
@@ -46,15 +49,18 @@ export async function serveMemory(service:MemoryService,options:{input?:Readable
     const meta=(result as {_meta?:unknown})._meta;
     return {...result,resultType:'complete',_meta:{...(meta && typeof meta==='object' ? meta : {}),'io.modelcontextprotocol/serverInfo':SERVER_INFO}};
   };
-  const discover=()=>modern({supportedVersions:SUPPORTED,capabilities:{tools:{}},instructions:INSTRUCTIONS,...cache});
+  const discover=()=>modern({supportedVersions:supported,capabilities:{tools:{}},instructions:INSTRUCTIONS,...cache});
   await runJsonlServer({input:options.input ?? process.stdin,output:options.output ?? process.stdout,
     notify(method) {if(method==='notifications/initialized' && initialized) ready=true;},
     async handle(method,params,signal) {
       signal.throwIfAborted();
-      if(method==='server/discover') return discover();
+      if(method==='server/discover') {
+        if(options.backend) throw new RpcError(-32601,'The tools-only proxy requires a legacy initialize handshake');
+        return discover();
+      }
       const version=modernVersion(params);
       if(version!==undefined) {
-        if(!MODERN_PROTOCOLS.includes(version)) throw new RpcError(-32022,'Unsupported protocol version',{supported:SUPPORTED,requested:version});
+        if(options.backend || !MODERN_PROTOCOLS.includes(version)) throw new RpcError(-32022,'Unsupported protocol version',{supported,requested:version});
         if(method==='tools/list') return modern({tools:await listTools(),...cache});
         if(method==='tools/call') return modern(await callTool(params,signal) as object);
         throw new RpcError(-32601,`Method not supported: ${method}`);

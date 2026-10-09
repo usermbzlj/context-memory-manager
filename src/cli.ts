@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { loadConfig, saveConfig, defaultStoragePath, redactConfig } from './config.js';
+import { loadConfig, updateConfig, defaultStoragePath, redactConfig } from './config.js';
 import { errorMessage, object, terminalSafe } from './util/validation.js';
 import { planSetup, planUninstall, applySetup, MissingHostConfig, type AgentTarget, type FileChange } from './integrations/setup.js';
 import type { ContextManager as Manager } from './core/context-manager.js';
@@ -36,6 +36,7 @@ Memory (scoped by --agent and --workspace):
   gc --yes                    Apply explicitly configured retention caps globally
   config show                 Show config with credentials redacted
   config set <key> <JSON>      Validate and atomically save a setting
+  dashboard                   Start the authenticated local browser dashboard
 
 Agent processes (stdout is protocol-only):
   serve                        Tools-only memory MCP stdio server
@@ -49,6 +50,7 @@ Options:
   --agent NAME                Default: cli. Use the same agent as capture.
   --workspace PATH            Default: current directory
   --storage PATH              Default: CMM_STORAGE or ~/.context-memory-manager
+  --port N --open              Dashboard port (0 chooses a free port), open browser
   --shared                    Explicit cross-agent reads within this workspace
   --file PATH                 Capture input; otherwise read stdin
   --field input|result        Recall field (default result)
@@ -72,6 +74,7 @@ No account, API key, network, vector database or paid model needed by default.
 const options={
   storage:{type:'string'},workspace:{type:'string'},agent:{type:'string'},session:{type:'string'},
   database:{type:'string'},hash:{type:'string'},find:{type:'string'},cursor:{type:'string'},
+  port:{type:'string'},open:{type:'boolean'},
   file:{type:'string'},out:{type:'string'},field:{type:'string'},limit:{type:'string'},offset:{type:'string'},
   'used-tokens':{type:'string'},'context-window':{type:'string'},
   json:{type:'boolean'},shared:{type:'boolean'},restore:{type:'boolean'},'dry-run':{type:'boolean'},
@@ -105,8 +108,9 @@ function writeExport(file:string,value:string):void {
   const fd=fs.openSync(path.resolve(file),'wx',0o600);
   try {fs.writeFileSync(fd,value,'utf8');fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
 }
-function configSet(cfg:ReturnType<typeof loadConfig>,key:string,raw:string) {
+async function configSet(storage:string,key:string,raw:string) {
   if(key==='storage.path')throw new Error('Select storage with --storage; do not move data by editing config');
+  return updateConfig(storage,cfg=>{
   const parts=key.split('.');let target=cfg as unknown as Record<string,any>;
   for(const p of parts.slice(0,-1)) {
     if(['__proto__','constructor','prototype'].includes(p) || !Object.hasOwn(target,p) || !target[p] || typeof target[p]!=='object' || Array.isArray(target[p]))throw new Error('Unknown config path');
@@ -114,7 +118,8 @@ function configSet(cfg:ReturnType<typeof loadConfig>,key:string,raw:string) {
   }
   const last=parts.at(-1)!;
   if(['__proto__','constructor','prototype'].includes(last) || !Object.hasOwn(target,last))throw new Error('Unknown config key');
-  target[last]=JSON.parse(raw);saveConfig(cfg);
+  target[last]=JSON.parse(raw);return cfg as unknown as Record<string,unknown>;
+  });
 }
 function diagnostics(manager:Manager,scope:{agent:string;workspaceId:string;shared?:boolean},cmd:string,limit:number) {
   if(limit<1 || limit>200)throw new Error('Diagnostic limit must be 1..200');
@@ -155,7 +160,7 @@ export async function main(argv=process.argv.slice(2)):Promise<void> {
   if(cmd==='launch')throw new Error('cmm launch kimi was removed: Kimi Code 2.x has no per-launch config flags. Run cmm setup kimi instead.');
   if(cmd==='config') {
     const cfg=loadConfig(storage);
-    if(rest[0]==='set') {configSet(cfg,required(rest[1],'config key'),required(rest[2],'JSON value'));emit({saved:true,config:redactConfig(cfg)});}
+    if(rest[0]==='set') {const saved=await configSet(storage,required(rest[1],'config key'),required(rest[2],'JSON value'));emit({saved:true,config:redactConfig(saved)});}
     else if(rest[0]===undefined || rest[0]==='show')emit(redactConfig(cfg));else throw new Error('Use config show or config set <key> <JSON>');
     return;
   }
@@ -165,6 +170,18 @@ export async function main(argv=process.argv.slice(2)):Promise<void> {
     emit({dryRun:true,writes:false,source:data.metadata});return;
   }
   if(cmd==='demo') {const {runDemo}=await import('./demo.js');await runDemo();return;}
+  if(cmd==='dashboard') {
+    const {startDashboard}=await import('./dashboard/server.js');
+    const dashboard=await startDashboard({storage,workspace,agent:flags.agent ?? 'codex',port:numeric(flags.port,0),open:flags.open});
+    emit({dashboard:dashboard.url,launchUrl:dashboard.launchUrl,scope:'selected storage',listen:'loopback',note:'Open launchUrl once; keep it private. Ctrl+C stops the panel.'});
+    await new Promise<void>(resolve=>{
+      let closing=false;
+      const close=()=>{if(closing)return;closing=true;void dashboard.close().then(resolve,()=>{process.exitCode=1;resolve();});};
+      process.once('SIGINT',close);process.once('SIGTERM',close);
+      process.stdin.on('end',close);process.stdin.resume();
+    });
+    return;
+  }
   const commands=['hook','serve','proxy','bridge','capture','import-rtk','search','recall','pin','unpin','status','explain','verify','reindex','tidy','gc','doctor','sessions','events','chains','capsules','scores','recalls','providers','stats'];
   if(!commands.includes(cmd))throw new Error(`Unknown command: ${cmd}. Run cmm --help.`);
   const {ContextManager}=await import('./core/context-manager.js');
@@ -194,14 +211,14 @@ export async function main(argv=process.argv.slice(2)):Promise<void> {
         if(agent==='kimi')return;
         throw new Error('Hook cwd is outside the configured workspace');
       }
-      manager=ContextManager.open(storage);
+      manager=ContextManager.open(storage,undefined,{component:'hook',persistent:false});
       const service=new MemoryService(manager,{agent,workspaceId:workspace});
       const response=await executeHook(service,agent,parsed);if(response!==undefined)emit(response);
       return;
     }
     if(cmd==='gc' && !flags.yes)throw new Error('GC can delete cold originals across this entire storage. Review caps, then explicitly pass --yes.');
     if(cmd==='proxy' && !passthrough.length)throw new Error('Use cmm proxy -- <MCP server command> [args]');
-    manager=ContextManager.open(storage);
+    manager=ContextManager.open(storage,undefined,{component:cmd==='bridge'?'bridge':'manager',persistent:['bridge','serve','proxy'].includes(cmd)});
     const service=new MemoryService(manager,{agent:flags.agent ?? 'cli',workspaceId:workspace,shared:flags.shared});
     if(flags.shared && ['capture','import-rtk','tidy','bridge','proxy'].includes(cmd))throw new Error('--shared is for explicit archive access, not capture or host projection');
     if(['serve','bridge','proxy'].includes(cmd)) {

@@ -1,9 +1,9 @@
-Kimi Code live host smoke, 2026-10-07, Windows 10.0.26300, Node 24.19.0, kimi 2.1.1 (C:\Users\root\.kimi-code\bin\kimi.exe)
+Kimi Code live host smoke, 2026-10-07, Windows 10.0.26300, Node 24.19.0, kimi 2.1.1 (<home>\.kimi-code\bin\kimi.exe)
 Isolation: KIMI_CODE_HOME=<temp>\kimi home, KIMI_DISABLE_TELEMETRY=1, KIMI_CODE_NO_AUTO_UPDATE=1; model = local scripted OpenAI-compatible fixture on 127.0.0.1 (no credentials, no paid calls).
 Paths contain spaces: <temp>\work space, <temp>\storage.
 
 == 1. Untrusted workspace (kimi -p, stream-json) ==
-Warning: this folder is not trusted; skipped 1 project-level MCP server: context_memory (stdio: C:\Program Files\nodejs\node.exe D:\Users\root\Desktop\context-memory-manager-v0.3.0-rc.1\dist\src\cli.js serve --agent kimi --workspace <temp>\work space --storage <temp>\storage --managed-by-cmm).
+Warning: this folder is not trusted; skipped 1 project-level MCP server: context_memory (stdio: C:\Program Files\nodejs\node.exe <repo>\dist\src\cli.js serve --agent kimi --workspace <temp>\work space --storage <temp>\storage --managed-by-cmm).
   Run `kimi` here and choose "Trust this folder" to enable them.
 Model-visible tools: no mcp__context_memory__* entries.
 

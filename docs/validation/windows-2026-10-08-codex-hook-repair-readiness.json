@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-08",
+  "codexVersion": "0.162.0-alpha.2",
+  "transport": "Original installed binary app-server over stdio",
+  "methods": ["initialize", "initialized", "hooks/list"],
+  "modelCalls": 0,
+  "hookEvents": [
+    {
+      "eventName": "postToolUse",
+      "source": "project hooks.json",
+      "enabled": true,
+      "isManaged": false,
+      "trustStatus": "modified",
+      "hasPowerShellCallOperator": true,
+      "currentHash": "sha256:cc88072b9f8b0b8834175cb20573a75958c60b681d949e910743b066bf300f04"
+    }
+  ],
+  "hookErrors": [],
+  "hookWarnings": [],
+  "hookTrustModified": false,
+  "hookFileUnchangedByReadinessCheck": true,
+  "nativeCaptureTested": false,
+  "currentProjectArchiveEvents": 0,
+  "captureOnly": true,
+  "ingressCompression": false,
+  "userDeferredTrustReview": true,
+  "childClosureConfirmed": true,
+  "privatePathsOmitted": true
+}

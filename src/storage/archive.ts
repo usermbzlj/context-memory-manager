@@ -1,4 +1,4 @@
-import { inferProvenance } from '../evidence/provenance.js';
+import { inferProvenance, mergeObservedProvenance, provenanceFor } from '../evidence/provenance.js';
 import { indexEvidence } from '../evidence/index.js';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -80,7 +80,8 @@ export function searchBody(input: string, result: string, descriptor: ToolDescri
 export class ArchiveServiceImpl implements ArchiveService {
   private failNext = false;
   private readonly remoteCaptured = new Set<string>();
-  constructor(private readonly db: Database, private readonly blobs: BlobStore, private readonly logger?: Logger) {}
+  constructor(private readonly db: Database, private readonly blobs: BlobStore, private readonly logger?: Logger,
+    private readonly observeIndex?: (source: {agent:string;workspaceId:string;eventId:string}) => (result:{status:'ok'|'error'}) => void) {}
   failNextArchive(): void { this.failNext = true; }
   private captureGitRemote(agent: string, workspace: string): void {
     const key = `${agent}\0${workspace}`;
@@ -111,6 +112,9 @@ export class ArchiveServiceImpl implements ArchiveService {
             throw new ArchiveError('archive identity conflict: the same tool call has different content; original preserved');
           }
           this.readRow(old); // A duplicate must still have readable, verified originals.
+          const merged = mergeObservedProvenance(provenanceFor(this.db, old.id), provenance);
+          this.db.run('INSERT INTO evidence_provenance(event_id,json) VALUES(?,?) ON CONFLICT(event_id) DO UPDATE SET json=excluded.json',
+            [old.id, JSON.stringify(merged)]);
           return { ...rowToToolEvent(old), inserted: false };
         }
         // Files and references share the writer lock with GC. A new writer cannot
@@ -129,9 +133,17 @@ export class ArchiveServiceImpl implements ArchiveService {
         };
         this.db.insertToolEvent(row);
         this.db.run('INSERT INTO evidence_provenance(event_id,json) VALUES(?,?)', [row.id, JSON.stringify(provenance)]);
-        indexEvidence(this.db, row.id, input.input, input.result);
-        this.db.run('INSERT INTO archive_search(event_id,agent,workspace,tool,body) VALUES(?,?,?,?,?)',
-          [row.id, input.agent, workspaceId, input.toolName, searchBody(input.input, input.result, descriptor)]);
+        let endIndex: ((result:{status:'ok'|'error'})=>void) | undefined;
+        try {endIndex=this.observeIndex?.({agent:input.agent,workspaceId,eventId:row.id});} catch { /* Diagnostics fail open. */ }
+        try {
+          indexEvidence(this.db, row.id, input.input, input.result);
+          this.db.run('INSERT INTO archive_search(event_id,agent,workspace,tool,body) VALUES(?,?,?,?,?)',
+            [row.id, input.agent, workspaceId, input.toolName, searchBody(input.input, input.result, descriptor)]);
+        } catch (error) {
+          try {endIndex?.({status:'error'});} catch { /* fail-open */ }
+          throw error;
+        }
+        try {endIndex?.({status:'ok'});} catch { /* fail-open */ }
         return { ...rowToToolEvent(row), inserted: true };
       });
       this.captureGitRemote(input.agent, workspaceId);

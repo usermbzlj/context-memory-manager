@@ -1,8 +1,130 @@
 # Release validation: 0.3.0-rc.2
 
-Latest record: **2026-10-07, Windows, 0.3.0-rc.2**. Local release candidate; no npm/GitHub
+Latest record: **2026-10-09, Windows, 0.3.0-rc.2**. Local release candidate; no npm/GitHub
 publication or live-agent certification. The 2026-10-05 rc.1 record, the **2026-10-02 Linux
 record** below and earlier v0.2 reports remain historical evidence for their exact snapshots.
+
+## Windows local dashboard: 2026-10-09
+
+Node24.19.0/npm11.17.0, Windows11. Bundled React/Vite frontend, loopback HTTP and a dedicated
+Node SQLite worker. No private archive content or paid API calls were used in these checks.
+
+| Executed check | Actual result |
+| --- | --- |
+| Final clean source suite | `npm test`:229 tests,228 pass,0 fail,1 Windows file-symlink skip |
+| Installed dashboard | Offline tarball includes HTML/CSS/JS; unauthenticated access refused; one-use login and exact original download pass |
+| HTTP/security/config checks | Same-origin, CSRF, authenticated scope boundary, exact BOM/CRLF/NUL/Unicode downloads, maintenance completion, panel adoption and stale-revision conflict pass |
+| Shared configuration writers | Independent process lock/reread preserves unrelated edits; existing CLI invalid-config regressions pass |
+| Runtime observation | Scoped actual starts/ends, disabled/unavailable channel fail-open, privacy allowlist, lease replacement, stale recovery, bounded files/events, conservative fallback and cooperative cancellation pass |
+| Browser rendering | Six pages and original-text drawer inspected in IAB using an isolated4-record fixture; script-shaped evidence displayed as text; manual verify completed4/4 with0 failures |
+
+Observation remains bounded best-effort metadata. Host trust, already-running host adoption,
+GPU control, host token occupancy, billing and task-level savings are not inferred from this UI.
+
+## Windows DeepSeek capsule/chain API: 2026-10-09
+
+DeepSeek V4.1 Flash, official `https://api.deepseek.com/v1` endpoint, model ID
+`deepseek-flash`, explicit `reasoningEffort: "none"`. The existing local native retention
+configuration was preserved; the remote API was assigned only to capsule/chain roles.
+
+| Executed check | Actual result |
+| --- | --- |
+| Authentication and model discovery | Official model-list request: HTTP 200; requested model present |
+| CMM capsule refinement, synthetic isolated archive | Validated JSON; 153 input / 33 output tokens |
+| CMM fuzzy chain assist, synthetic isolated archive | Validated boolean JSON; 160 input / 5 output tokens |
+| Original evidence | Both synthetic original input/result pairs recovered exactly with hashes verified |
+| Clean build and source suite | `npm test`: 209 tests; 208 pass, 0 fail, 1 Windows file-symlink skip |
+| Offline distributable | `npm run test:pack`: actual tarball installation and package smoke pass |
+| Existing project archive | Doctor: 151 records checked, 0 failures, SQLite integrity OK |
+
+Credentials and configuration backups are outside this repository. The private configuration
+permits access only to the current Windows user, SYSTEM and administrators. Validation reports
+omit credentials and API error bodies. Live API checks used only synthetic reference lookups;
+they do not establish production task quality, billing totals or historical projection support.
+Persistent CMM bridges load the new provider settings after reload. Codex native hooks remain
+capture-only. Local reports are retained outside this source tree.
+
+## Windows native decision scoring: 2026-10-09
+
+Node 24.19.0, Windows 11, AMD Radeon RX 7900 XT. Local Clef-flash Q8_0 served by
+llama.cpp b11510 using Vulkan, 4,096-token context and physical batch; 33/33 layers offloaded.
+
+| Executed check | Actual result |
+| --- | --- |
+| Clean build and source suite | `npm test`: 207 tests; 206 pass, 0 fail, 1 Windows file-symlink skip |
+| Offline distributable | `npm run test:pack`: actual tarball installation, CLI/hook/demo/setup/MCP checks pass |
+| Native transport regression checks | Ordered probabilities, proxy bypass, bounded groups including the batch tail, invalid answers, HTTP failure, timeout, input budget and role/configuration checks pass |
+| Real local model, isolated synthetic archive | One native request: 658 input tokens, 0 output tokens; unresolved error retained (0.052 safe-to-remove), obsolete scan capsuled (0.813), pinned evidence not scored |
+| Local unavailable endpoint | One failed call, conservative fallback, no full eviction; all original input/result bytes remain exactly recoverable with archive hashes verified |
+| Existing project archive after configuration | Doctor: 128 records checked, 0 failures, SQLite integrity OK; no historical projection receipts |
+
+The project configuration was backed up outside the source checkout and switched to the native
+`systemone` scorer/provider. Existing persistent bridges require reload to adopt it. Native Codex
+hooks remain capture-only. Synthetic scenario probabilities are not a calibration benchmark,
+actual task-quality result, token-saving claim or completed live historical-projection smoke.
+The real model and portable deployment remain outside this source tree.
+
+## Windows hook and evidence repair: 2026-10-08
+
+The user's real Hook statistics showed repeated `hook exited with code 1` after trust was
+granted. Executing that exact old generated command through PowerShell reproduced a parser
+error before Node launched. The suite below replaces direct-argv-only assurance with real
+generated-command execution. Node 24.19.0/npm 11.17.0; schema/source version remain v4/rc.2.
+
+| Executed check | Actual result |
+| --- | --- |
+| Starting baseline | 188 tests: 187 pass, 0 fail, one file-symlink permission skip |
+| Repaired clean-build suite | `npm test`: **200 tests, 18 suites; 199 pass, 0 fail, 1 skipped**, natural exit 0 |
+| Generated Codex commands | Real PowerShell 5.1 and 7: old managed command upgraded with backup, unrelated hook retained, idempotent setup, literal paths with Unicode/apostrophe/dollar/backtick/ampersand, exact result recall and hash verify |
+| Offline tarball installation | `npm run test:pack`: installed packaged command executed through PowerShell; one fixture archived and recalled exactly; malformed input fails open; setup/uninstall and MCP handshake/discovery pass |
+| Windows smoke | `scripts/windows-smoke.ps1` passes under both PowerShell 5.1 and 7, including generated-hook capture, exact Unicode/CRLF recall and a nonempty integrity check; liveAgentTested=false |
+| Configuration save | Unknown keys, incomplete replacements and invalid types refused before writes; previous bytes survive; valid CLI settings reopen and legacy partial configs retain defaults |
+| Late completeness evidence | Duplicate observation and OpenCode cache learn partial restrictions; cached projections restore originals; spoofed markers, wrong scopes, corrupt receipts, completeness promotion and post-read GC are refused |
+| Current project repair | Only the existing project's CMM Hook definition updated, old file backed up, independent archive and capture-only settings retained; no artificial fixture captured into the real project archive |
+| Installed Codex hook re-read | Original Codex 0.162.0-alpha.2 app-server `hooks/list`: enabled=true, isManaged=false, **trustStatus=modified**, errors/warnings empty, new command contains the call operator; no model/turn calls or trust writes |
+
+Logs: `windows-2026-10-08-repair-tests.txt`, `windows-2026-10-08-repair-package.txt`,
+`windows-2026-10-08-repair-smoke-ps5.txt`, `windows-2026-10-08-repair-smoke-ps7.txt`
+and `windows-2026-10-08-codex-hook-repair-readiness.json` under `docs/validation`.
+
+The user deferred re-reviewing/trusting the changed Hook. The real project's in-session MCP
+status still has zero captured events. No model call, manual fixture injection, trust bypass
+or sandbox change was used to claim native capture. User review/reload followed by a real
+tool result, MCP search and exact recall remains required. Other live-host, remote-CI and
+task-quality/token/cost gates remain open as recorded below.
+
+## Earlier Windows review and Codex readiness snapshot: 2026-10-08
+
+Node **24.19.0**, npm **11.17.0**, installed Codex **0.162.0-alpha.2**; schema v4 unchanged.
+The unmodified starting snapshot again passed 182 tests (181 pass, one Windows file-symlink skip),
+offline package installation and Windows smoke. The following evidence applies to the repaired source.
+
+| Executed check | Actual result |
+| --- | --- |
+| Clean build + full suite | `npm test`: **188 tests, 18 suites; 187 pass, 0 fail, 1 skipped**, natural exit 0 |
+| Offline distributable | `npm run test:pack`: actual local tarball installs offline, demo, four-agent setup/uninstall and MCP discovery/handshake pass |
+| Windows CLI smoke | `scripts/windows-smoke.ps1`: isolated archive and Kimi home, paths with spaces, demo, setup/uninstall and verify pass; liveAgentTested=false |
+| GC regressions | Reindex cannot republish a concurrently retired source; pin cannot publish an orphan; actual evicted source-chain evidence survives reactivation and becomes eligible after freshness expires |
+| Proxy protocol boundary | Actual CLI proxy rejects stateless discovery/calls before upstream execution; the legacy call still forwards exactly once |
+| Kimi configuration protection | Multiline TOML values are refused before setup/uninstall writes; config/MCP bytes remain unchanged; comments and ordinary single-line strings still work |
+| Installed Codex configuration | Original binary app-server `config/read` loads project CMM settings without config errors |
+| Installed Codex MCP discovery | `mcpServerStatus/list` for `context_memory` discovers CMM 0.3.0-rc.2 and all five tools, `toolsError=null` |
+| Installed Codex hook discovery | `hooks/list` parses project PostToolUse, enabled=true, errors/warnings empty, **trustStatus=untrusted**, isManaged=false |
+
+Source/test log: `docs/validation/windows-2026-10-08-npm-test.txt`. Codex discovery evidence:
+`docs/validation/windows-2026-10-08-codex-readiness.json` (local paths omitted).
+Package and CLI logs: `windows-2026-10-08-package.txt`, `windows-2026-10-08-smoke.txt`
+in the same validation directory. The remaining skip is the Windows file-symlink permission case.
+The real binary performs discovery, not a scripted Codex model conversation. Model calls: **zero**.
+Project settings were prepared only for this CMM checkout, with a separate archive using
+captureOnly=true, ingressCompression=false, no providers and no retention caps. Existing private
+archives, other agent configurations and hook trust were not modified. The newly initialized
+project archive has zero events; an empty successful verify is not native capture evidence.
+
+Still required for Codex: user review/trust of the exact hook definition, client/session reload,
+then a native tool result that can be searched and hash-verified through in-session MCP recall.
+Live Codex task quality/context savings, other real-model hosts, OpenCode/Bun, RTK binaries and
+remote CI remain unverified. See the current Chinese [review and activation steps](PROJECT_REVIEW.zh-CN.md).
 
 ## Windows host-contract update: 2026-10-07
 

@@ -1,5 +1,5 @@
 {
-  "cli": "D:\\Users\\root\\Desktop\\context-memory-manager-v0.3.0-rc.1\\dist\\src\\cli.js",
+  "cli": "<repo>\\dist\\src\\cli.js",
   "node": "v24.19.0",
   "isolatedCLI": true,
   "pathsWithSpaces": true,

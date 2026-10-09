@@ -1,0 +1,27 @@
+{
+  "cli": "<repo>\\dist\\src\\cli.js",
+  "node": "v24.19.0",
+  "isolatedCLI": true,
+  "pathsWithSpaces": true,
+  "demo": {
+    "demo": "Capture -> preserve first use -> pressure batch -> stable view -> mid-log search -> exact recall -> pin restoration",
+    "networkCalls": 0,
+    "firstUsePreserved": true,
+    "belowPressureUnchanged": true,
+    "stableProjection": true,
+    "middleEvidenceFound": true,
+    "pinRestoresOriginal": true,
+    "rtkDoubleCompressionBlocked": true,
+    "originalChars": 177048,
+    "projectedChars": 7950,
+    "visibleCharacterReductionPercent": 95.51,
+    "recallPages": 15,
+    "sha256": "faba2c8e5eb0c22a6c8c672d2aa4f62c4de1c1de0be4d865fd54437def563f1a",
+    "exactRecallVerified": true,
+    "note": "Synthetic trace with supplied estimated usage. Character counts are not measured API tokens, cost savings, cache hits or task quality.",
+    "excerpt": "[CMM archive 3559466b-be7b-49c5-aeee-92fe136d84ca] Read | ok\nEvidence extract, NOT the full result. Captured: 177048 UTF-16 chars.\nExact captured text; completeness before the observation boundary is unknown.\nRead: context_recall({\"eventId\":\"3559466b-be7b-49c5-aeee-92fe136d84ca\",\"offset\":0,\"limit\":12000}).\nRead artifacts/test.log → success\nexit code: 0\ntests: 3000 passed, 0 failed\nSUMMARY: 3000 passed; 0 failed. Exit code: 0.\npath: artifacts/test.log\n--- verbatim head ---\nPASS case-0000: cache, retry and archive evidence verified\nPASS case-0001: cache, retry and archive evidence verified\nPASS case-0002: cache, retry and archive evidence verified\nPASS case-0003: cache, retry and archive evidence verified\nPASS case-0004: cache, retry and archive evidence verified\nPASS case-0005: cache, retry"
+  },
+  "setupAndUninstall": true,
+  "generatedHookCapture": true,
+  "liveAgentTested": false
+}

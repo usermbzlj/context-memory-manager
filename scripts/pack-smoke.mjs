@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { spawnSync, spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'cmm-package-'));
 let cleanupSafe=true;
 let interrupted=false,lifecycle,interruptPending;
@@ -20,9 +21,12 @@ try {
   const packed=JSON.parse(run([process.env.npm_execpath,'pack','--offline','--ignore-scripts','--json','--pack-destination',tmp]))[0];
   assert.ok(packed.files.some(f=>f.path==='dist/src/integrations/opencode.js'));
   assert.ok(packed.files.some(f=>f.path==='dist/src/cli.js'));
+  assert.ok(packed.files.some(f=>f.path==='dist/src/dashboard/assets/index.html'));
+  assert.ok(packed.files.some(f=>/^dist\/src\/dashboard\/assets\/assets\/.+\.js$/.test(f.path)));
   for (const doc of ['README.md','README.zh-CN.md','docs/RELEASE_VALIDATION.md','docs/PROJECT_REVIEW.zh-CN.md','docs/IMPLEMENTATION_REPORT.zh-CN.md','docs/AUDIT.md'])
     assert.ok(packed.files.some(f=>f.path===doc), 'Missing release documentation: '+doc);
   assert.ok(!packed.files.some(f=>f.path.startsWith('node_modules/') || f.path.startsWith('dist/tests/') || /(?:\.db(?:-|$)|\.env$)/.test(f.path)));
+  assert.ok(!packed.files.some(f=>/(?:^|\/)(?:\.codex|\.claude|\.kimi-code|\.cmm)(?:\/|$)|\.cmm-backup-|\.env(?:\.|$)/.test(f.path)), 'Private local configuration must not enter the package');
   const tarball=path.join(tmp,packed.filename);
   // npm installs a local dependency archive into an isolated prefix without scripts.
   const prefix=path.join(tmp,'consumer');fs.mkdirSync(prefix);
@@ -35,13 +39,56 @@ try {
   const cli=path.join(base,'dist','src','cli.js');assert.match(run([cli,'--help']),/Keep the evidence/);
   assert.equal(run([cli,'--version']).trim(),meta.version);
   const demo=JSON.parse(run([cli,'demo']));assert.equal(demo.exactRecallVerified,true);assert.ok(demo.projectedChars<demo.originalChars);
-  const state=path.join(tmp,'state');const workspace=path.join(tmp,'workspace');fs.mkdirSync(workspace);
+  const state=path.join(tmp,'state');const workspace=path.join(tmp,'workspace with spaces');fs.mkdirSync(workspace);
   // Kimi hooks are user-level; never touch the developer's real Kimi Code config.
   const kimiHome=path.join(tmp,'kimi-home'),kimiConfig=path.join(kimiHome,'config.toml'),kimiBefore='default_model = "fixture"\n';
   fs.mkdirSync(kimiHome);fs.writeFileSync(kimiConfig,kimiBefore);const env={...process.env,KIMI_CODE_HOME:kimiHome};
   const preview=JSON.parse(run([cli,'setup','all','--dry-run','--workspace',workspace,'--storage',state],{env}));assert.equal(preview.dryRun,true);assert.equal(fs.existsSync(state),false);
   assert.ok(preview.writes.some(w=>w.file===kimiConfig));assert.equal(fs.readFileSync(kimiConfig,'utf8'),kimiBefore);
   run([cli,'setup','all','--workspace',workspace,'--storage',state],{env});assert.match(fs.readFileSync(kimiConfig,'utf8'),/PostToolUseFailure/);
+  // Execute the installed command through the host shell, not just node cli.js.
+  // Direct argv tests missed the PowerShell call-operator failure in real setup.
+  const command=JSON.parse(fs.readFileSync(path.join(workspace,'.codex','hooks.json'),'utf8')).hooks.PostToolUse[0].hooks[0].command;
+  const shellArgs=process.platform==='win32'?['-NoLogo','-NoProfile','-NonInteractive','-Command',command]:['-c',command];
+  let shell=process.platform==='win32'?'pwsh.exe':'/bin/sh';
+  const observed='packaged hook exact evidence 中🚀\r\nsecond line\n';
+  const hookInput=JSON.stringify({hook_event_name:'PostToolUse',session_id:'pack-hook',tool_use_id:'pack-call',cwd:workspace,
+    tool_name:'exec_command',tool_input:{command:'isolated fixture'},tool_response:observed});
+  const executeHook=input=>{
+    const result=spawnSync(shell,shellArgs,{input,encoding:'utf8',timeout:20000,env});
+    // spawnSync timeout only terminates the shell. Descendant/pipe closure is
+    // unconfirmed in that case; keep the disposable archive for diagnosis.
+    if(result.signal || (result.error && result.error.code!=='ENOENT'))cleanupSafe=false;
+    return result;
+  };
+  let hooked=executeHook(hookInput);
+  if(process.platform==='win32' && hooked.error?.code==='ENOENT'){shell='powershell.exe';hooked=executeHook(hookInput);}
+  assert.equal(hooked.status,0,hooked.stderr);assert.equal(hooked.stdout,'');assert.equal(hooked.stderr,'');
+  const hookScope=['--agent','codex','--workspace',workspace,'--storage',state];
+  const evidence=JSON.parse(run([cli,'search',...hookScope])).results;assert.equal(evidence.length,1);
+  assert.equal(JSON.parse(run([cli,'recall',evidence[0].eventId,...hookScope])).text,observed);
+  const hookVerified=JSON.parse(run([cli,'verify',...hookScope]));assert.equal(hookVerified.checked,1);assert.equal(hookVerified.failed,0);
+  // The installed package must serve its bundled UI and exact archive bytes.
+  const {startDashboard}=await import(pathToFileURL(path.join(base,'dist','src','dashboard','server.js')).href);
+  const panel=await startDashboard({storage:state});
+  try {
+    assert.equal((await fetch(panel.url+'/api/session')).status,401);
+    const html=await (await fetch(panel.url)).text();
+    const script=/src="([^"]+\.js)"/.exec(html)?.[1];assert.ok(script);
+    assert.equal((await fetch(new URL(script,panel.url+'/'))).status,200);
+    const login=await fetch(panel.url+'/api/session',{method:'POST',headers:{'content-type':'application/json',origin:panel.url},
+      body:JSON.stringify({token:new URL(panel.launchUrl).hash.slice('#token='.length)})});
+    assert.equal(login.status,200);
+    const cookie=login.headers.get('set-cookie').split(';')[0],csrf=(await login.json()).csrfToken;
+    const response=await fetch(panel.url+'/api/command',{method:'POST',headers:{'content-type':'application/json',origin:panel.url,cookie,'x-cmm-csrf':csrf},body:JSON.stringify({method:'scopes',params:{}})});
+    assert.equal(response.status,200);const scopes=(await response.json()).result.scopes;assert.equal(scopes.length,1);
+    const download=await fetch(panel.url+'/api/download?'+new URLSearchParams({scopeId:scopes[0].id,eventId:evidence[0].eventId,field:'result'}),{headers:{cookie}});
+    assert.equal(download.status,200);assert.ok(Buffer.from(await download.arrayBuffer()).equals(Buffer.from(observed,'utf8')));
+  }finally{
+    try{await panel.close();}catch(error){cleanupSafe=false;throw error;}
+  }
+  const malformed=executeHook('{broken');assert.equal(malformed.status,0,malformed.stderr);assert.equal(malformed.stdout,'');
+  assert.match(malformed.stderr,/Hook failed open/);
   run([cli,'uninstall','all','--workspace',workspace,'--storage',state],{env});assert.equal(fs.readFileSync(kimiConfig,'utf8'),kimiBefore);
   const child=spawn(process.execPath,[cli,'serve','--workspace',workspace,'--storage',state],{stdio:'pipe'});
   lifecycle=observeChild(child);
@@ -67,11 +114,12 @@ try {
     catch(error){cleanupSafe=false;console.error('Packaged MCP close could not be confirmed; temporary directory retained: '+tmp);throw error;}
     finally{failPending(new Error('Packaged MCP smoke finished'));lines.close();interruptPending=undefined;}
   }
-  console.log(JSON.stringify({package:packed.filename,files:packed.files.length,packedBytes:packed.size,unpackedBytes:packed.unpackedSize,isolatedInstall:true,registryRequired:false,help:true,demo:true,setupAndUninstall:true,mcpHandshake:true,demoProof:demo},null,2));
+  console.log(JSON.stringify({package:packed.filename,sha256:createHash('sha256').update(fs.readFileSync(tarball)).digest('hex'),files:packed.files.length,packedBytes:packed.size,unpackedBytes:packed.unpackedSize,isolatedInstall:true,registryRequired:false,help:true,demo:true,dashboardAssetsAndAuth:true,dashboardExactDownload:true,setupAndUninstall:true,generatedHookCapture:true,generatedHookFailOpen:true,mcpHandshake:true,demoProof:demo},null,2));
 } catch(error) {
   if(!interrupted)throw error;
   console.error('Pack smoke interrupted: '+String(error));process.exitCode=130;
 } finally {
   process.off('SIGINT',interrupt);process.off('SIGTERM',interrupt);
   if(cleanupSafe)fs.rmSync(tmp,{recursive:true,force:true});
+  else console.error('Child closure unconfirmed; temporary directory retained: '+tmp);
 }

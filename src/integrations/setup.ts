@@ -26,6 +26,15 @@ function hookArgv(options:SetupOptions):string[] {
   return [options.node ?? process.execPath,options.cli,'hook',options.agent,'--workspace',options.workspace,'--storage',options.storage,'--managed-by-cmm'];
 }
 export function hookCommand(options:SetupOptions):string {
+  if(options.agent==='codex' && (options.platform ?? process.platform)==='win32') {
+    // Codex uses the Windows session's PowerShell. Quoted executable strings need
+    // the call operator, and literal strings must not expand $variables/backticks.
+    const quote=(value:string)=>{
+      if(/[\r\n\0]/.test(value))throw new Error('Newlines/NUL are not valid in generated hook commands');
+      return "'"+value.replaceAll("'","''")+"'";
+    };
+    return '& '+hookArgv(options).map(quote).join(' ');
+  }
   return hookArgv(options).map(v=>shellQuote(v,options.platform)).join(' ');
 }
 /** Claude exec form: no shell, so Git Bash/PowerShell quoting rules never apply. */
@@ -115,6 +124,26 @@ export function kimiCodeHome(env:NodeJS.ProcessEnv=process.env):string {
 const KIMI_EVENTS=['PostToolUse','PostToolUseFailure'];
 const quoted=(values:string[],platform?:NodeJS.Platform)=>values.map(v=>shellQuote(v,platform)).join(' ');
 
+/** Our surgical table editor cannot safely interpret TOML multiline values. */
+function requireSingleLineTomlStrings(source:string):void {
+  let quote:'"'|"'"|undefined;
+  for(let i=0;i<source.length;i++) {
+    const ch=source[i];
+    if(quote) {
+      if(ch==='\n' || ch==='\r')throw new Error('Unterminated single-line TOML string; refusing to edit Kimi config');
+      if(quote==='"' && ch==='\\') {i++;continue;}
+      if(ch===quote)quote=undefined;
+      continue;
+    }
+    if(ch==='#') {const end=source.indexOf('\n',i);if(end<0)break;i=end;continue;}
+    if(ch==='"' || ch==="'") {
+      if(source.slice(i,i+3)===ch.repeat(3))throw new Error('Kimi config contains TOML multiline strings; edit CMM hooks manually instead of letting CMM rewrite this config');
+      quote=ch;
+    }
+  }
+  if(quote)throw new Error('Unterminated single-line TOML string; refusing to edit Kimi config');
+}
+
 /** Split TOML into top-level header segments. Values in our [[hooks]] tables are single-line. */
 function tomlSegments(source:string):{header:string;text:string}[] {
   const segments:{header:string;text:string}[]=[{header:'',text:''}];
@@ -135,6 +164,7 @@ function tomlCommand(segment:string):string|undefined {
  * own config and is not required to keep comments.
  */
 function replaceKimiHooks(before:string,workspace:string,platform:NodeJS.Platform|undefined,tables:string):string {
+  requireSingleLineTomlStrings(before);
   if(/^\s*hooks\s*=/m.test(before) || /^\s*\[\s*hooks\s*\]/m.test(before))throw new Error('Kimi hooks are not in [[hooks]] table form; edit them manually instead of letting CMM rewrite them');
   const owner=quoted(['--workspace',workspace],platform),agent=quoted(['hook','kimi'],platform);
   const segments=tomlSegments(before);

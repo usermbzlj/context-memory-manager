@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.3.0-rc.2 Windows hook and evidence repairs - 2026-10-08
+
+- Codex Windows setup uses PowerShell's call operator and literal quoting. Re-running setup
+  upgrades old managed commands while preserving unrelated hooks and backing up the old definition.
+- Configuration saves reject unknown keys, incomplete replacement objects and invalid field types
+  before writing; accepted settings remain loadable and older partial configurations retain defaults.
+- Repeated verified observations retain late partial/filtered restrictions. OpenCode's cached
+  calls accept those restrictions through a scoped private bridge, validating originals or
+  hash-bound receipts and rechecking source existence under the writer transaction.
+- Full suite: 200 tests, 199 pass, one Windows file-symlink skip. Offline package checks and
+  PowerShell 5.1/7 smoke now execute generated hooks, recall exact evidence and verify hashes.
+- Current project hook was upgraded with a backup. Installed Codex reads it without errors,
+  but reports trustStatus=modified; user review/reload and live-session capture remain pending.
+
+Schema/source version remain unchanged; this is a local RC repair, not a published release.
+
+## 0.3.0-rc.2 local hardening - 2026-10-08
+
+- Reindex and pin recheck source existence under the writer transaction after awaited reads,
+  preventing retired evidence from republishing search text or creating orphan pins.
+- GC honors source-chain reactivation using the same protection policy as runtime projection.
+- The legacy tools-only proxy rejects stateless discovery/requests before forwarding upstream.
+- Kimi setup/uninstall refuse triple-quoted TOML values before any write rather than mistake
+  embedded hook examples for managed tables. Comments and ordinary single-line values still work.
+- Generated local Codex config/hook files are ignored by Git. Schema and source version remain
+  unchanged; this is local RC hardening, not a new published release.
+- Windows suite: 188 tests, 187 pass, one file-symlink skip. Installed Codex discovers five MCP
+  tools; its native capture hook still requires user trust. See `docs/RELEASE_VALIDATION.md`.
+
 ## 0.3.0-rc.2 - 2026-10-07
 
 ### Breaking

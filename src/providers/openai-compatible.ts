@@ -40,6 +40,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
         },
         body: JSON.stringify({
           model: this.cfg.model,
+          ...(this.cfg.reasoningEffort !== undefined ? { reasoning_effort: this.cfg.reasoningEffort } : {}),
           messages: [
             ...(req.system ? [{ role: 'system', content: req.system }] : []),
             { role: 'user', content: req.user },

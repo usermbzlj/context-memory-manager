@@ -25,6 +25,8 @@ export {
 
 export { ConservativeFallbackScorer } from './scoring/fallback.js';
 export { JevScorer } from './scoring/jev.js';
+export { SystemOneScorer } from './scoring/systemone.js';
+export { SystemOneProvider } from './providers/systemone.js';
 
 export {
   DeterministicCheapModel,

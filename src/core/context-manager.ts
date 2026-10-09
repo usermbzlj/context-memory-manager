@@ -6,6 +6,8 @@ import type {
   DecisionDetail,
   GcResult,
   Logger,
+  ModelProvider,
+  ProviderConfig,
   ProviderCallRecord,
   RecallResult,
   RecordResult,
@@ -23,6 +25,7 @@ import {
   activePreset,
   loadConfig,
   createConfigIfAbsent,
+  configRevision,
 } from '../config.js';
 import { createLogger } from '../logging.js';
 import { Database } from '../storage/sqlite.js';
@@ -35,14 +38,18 @@ import {
 } from '../descriptor.js';
 import { ConservativeFallbackScorer } from '../scoring/fallback.js';
 import { JevScorer } from '../scoring/jev.js';
+import { SystemOneScorer } from '../scoring/systemone.js';
 import {
   CapsuleBuilderImpl,
   ModelBackedCheapModel,
 } from '../capsule/compressor.js';
 import { RuleChainLinker } from '../chains/linker.js';
 import { buildProviders } from '../providers/index.js';
+import { observeProvider } from '../providers/failover.js';
+import { createRuntimeObserver, type RuntimeObserver, type ObserverOptions } from '../observability/runtime.js';
 import { PressureMonitor } from './pressure.js';
 import { RetentionEngine } from './retention.js';
+import { eventProtectionReason } from './protection.js';
 import { errorMessage, integer } from '../util/validation.js';
 
 /** Fallback window size when the host has not reported usage. */
@@ -54,6 +61,46 @@ const TIDY_BATCH_LIMIT = 8;
 /** Max tidy passes per maybeTidy call (loop-to-release guard). */
 const MAX_TIDY_PASSES = 3;
 
+function observeFallbackLogger(base: Logger, observer: RuntimeObserver): Logger {
+  return {
+    log(event,fields) {if(event==='model fallback')observer.noteFallback();base.log(event,fields);},
+    child(fields) {return observeFallbackLogger(base.child(fields),observer);},
+    close() {base.close();},
+  };
+}
+
+class ObservedCapsuleBuilder extends CapsuleBuilderImpl {
+  constructor(opts: ConstructorParameters<typeof CapsuleBuilderImpl>[0], private readonly observer: RuntimeObserver) { super(opts); }
+  override async build(event: ToolEvent) {
+    return this.observer.withScope({agent:event.agent,workspaceId:event.workspaceId},async () => {
+      const end=this.observer.operation({kind:'capsule',eventId:event.id,role:'capsule'});
+      try {const result=await super.build(event);end();return result;} catch (error) {end({status:'error'});throw error;}
+    });
+  }
+  override async buildChainCapsule(...args: Parameters<CapsuleBuilderImpl['buildChainCapsule']>) {
+    const chain=args[0];
+    return this.observer.withScope({agent:chain.agent,workspaceId:chain.workspaceId},async () => {
+      const end=this.observer.operation({kind:'capsule',role:'capsule'});
+      try {const result=await super.buildChainCapsule(...args);end();return result;} catch (error) {end({status:'error'});throw error;}
+    });
+  }
+}
+class ObservedRetentionEngine extends RetentionEngine {
+  constructor(opts: ConstructorParameters<typeof RetentionEngine>[0], private readonly observer: RuntimeObserver) { super(opts); }
+  override async decideAll(...args: Parameters<RetentionEngine['decideAll']>) {
+    const first=args[0][0];
+    if (!first) return super.decideAll(...args);
+    return this.observer.withScope({agent:first.agent,workspaceId:first.workspaceId},async () => {
+      const end=this.observer.operation({kind:'score',role:'retention'});
+      try {
+        const result=await super.decideAll(...args);
+        end({status:result.some(d=>/fallback|capsule-failed|archive-unavailable/.test(d.reason))?'fallback':'ok'});
+        return result;
+      } catch (error) {end({status:'error'});throw error;}
+    });
+  }
+}
+
 interface ConstructorOpts {
   config: Config;
   db: Database;
@@ -63,6 +110,7 @@ interface ConstructorOpts {
   retention: RetentionEngine;
   linker: RuleChainLinker;
   pressure: PressureMonitor;
+  runtime?: RuntimeObserver;
 }
 
 /**
@@ -83,6 +131,7 @@ export class ContextManager {
   readonly capsules: CapsuleBuilderImpl;
   readonly retention: RetentionEngine;
   readonly linker: RuleChainLinker;
+  readonly runtime: RuntimeObserver;
 
   private readonly pressure: PressureMonitor;
   private readonly lastTidy: Map<string, { turn: number; used: number }> =
@@ -97,6 +146,7 @@ export class ContextManager {
     this.retention = opts.retention;
     this.linker = opts.linker;
     this.pressure = opts.pressure;
+    this.runtime = opts.runtime ?? createRuntimeObserver(opts.config.storage.path);
   }
 
   /**
@@ -107,6 +157,7 @@ export class ContextManager {
   static open(
     storagePath?: string,
     overrides?: Record<string, unknown>,
+    runtimeOptions?: ObserverOptions,
   ): ContextManager {
     let cfg = loadConfig(storagePath, overrides);
     fs.mkdirSync(cfg.storage.path, { recursive: true, mode: 0o700 });
@@ -115,34 +166,54 @@ export class ContextManager {
       if (!createConfigIfAbsent(cfg)) cfg = loadConfig(storagePath, overrides);
     }
 
+    let adoptedRevision: string | undefined;
+    // Revision describes the exact file loaded, not a later concurrent save.
+    for (let attempt=0;attempt<3;attempt++) {
+      const before=configRevision(cfg.storage.path);
+      cfg=loadConfig(storagePath,overrides);
+      const after=configRevision(cfg.storage.path);
+      if (before===after) {adoptedRevision=overrides && Object.keys(overrides).length ? undefined : after;break;}
+    }
+
     const db = Database.open(path.join(cfg.storage.path, 'cmm.db'));
     const blobs = new BlobStore(
       path.join(cfg.storage.path, 'blobs'),
       cfg.storage.blobThresholdBytes,
     );
-    const logger = createLogger({
+    const baseLogger = createLogger({
       dir: cfg.logging.dir,
       level: cfg.logging.level,
     });
-    const archive = new ArchiveServiceImpl(db, blobs, logger);
+    const runtime = createRuntimeObserver(cfg.storage.path,{...runtimeOptions,configRevision:adoptedRevision});
+    const logger = observeFallbackLogger(baseLogger,runtime);
+    const providersFor = (role: 'retention'|'capsule'|'chain', configs: ProviderConfig[]): ModelProvider[] => {
+      const providers = buildProviders(configs);
+      for (let i=0;i<providers.length;i++) {
+        const config = configs[i];
+        observeProvider(providers[i],() => runtime.operation({kind:'provider',role,provider:config.name,model:config.model}));
+      }
+      return providers;
+    };
+    const archive = new ArchiveServiceImpl(db, blobs, logger,source => runtime.operation({kind:'index',
+      scope:{agent:source.agent,workspaceId:source.workspaceId},eventId:source.eventId}));
     const recordCall = (r: ProviderCallRecord): void => {
       db.insertProviderCall(r);
     };
     // Cheap model for capsule refinement: model-backed when capsule
     // providers are configured (PRD §17/§18), deterministic otherwise.
     const cheapModel = new ModelBackedCheapModel({
-      providers: buildProviders(cfg.providers.capsule),
+      providers: providersFor('capsule',cfg.providers.capsule),
       recordCall,
       logger,
     });
-    const capsules = new CapsuleBuilderImpl({ db, cheapModel, logger });
+    const capsules = new ObservedCapsuleBuilder({ db, cheapModel, logger },runtime);
     // Chain linker: rules first, model assist for fuzzy boundaries when
     // chain providers are configured (PRD §16.1).
     const linker = new RuleChainLinker({
       db,
       capsules,
       logger,
-      chainProviders: buildProviders(cfg.providers.chain),
+      chainProviders: providersFor('chain',cfg.providers.chain),
       recordCall,
     });
     const preset = activePreset(cfg);
@@ -153,16 +224,18 @@ export class ContextManager {
     let primary: RetentionScorer;
     if (cfg.retention.scorer === 'conservative' || cfg.providers.retention.length === 0) {
       primary = new ConservativeFallbackScorer();
+    } else if (cfg.retention.scorer === 'systemone') {
+      primary = new SystemOneScorer({ providers: providersFor('retention',cfg.providers.retention), recordCall, logger });
     } else {
       primary = new JevScorer({
-        providers: buildProviders(cfg.providers.retention),
+        providers: providersFor('retention',cfg.providers.retention),
         recordCall,
         logger,
       });
     }
     const fallbackScorer = new ConservativeFallbackScorer();
     const pressure = new PressureMonitor(preset);
-    const retention = new RetentionEngine({
+    const retention = new ObservedRetentionEngine({
       db,
       primary,
       fallback: fallbackScorer,
@@ -171,7 +244,7 @@ export class ContextManager {
       preset,
       getTurn: (sid: string) => db.getCurrentTurn(sid),
       verifyArchive: (id: string) => archive.fetchOriginal(id),
-    });
+    },runtime);
 
     return new ContextManager({
       config: cfg,
@@ -182,6 +255,7 @@ export class ContextManager {
       retention,
       linker,
       pressure,
+      runtime,
     });
   }
 
@@ -200,6 +274,10 @@ export class ContextManager {
     // Normalize the workspace id first so every downstream lookup
     // (session, archive, recall, pin) uses one identity (PRD §24).
     const normalized: ToolEventInput = { ...input, workspaceId };
+    return this.runtime.withScope({agent:input.agent,workspaceId},() => this.recordNormalized(normalized));
+  }
+
+  private async recordNormalized(normalized: ToolEventInput): Promise<RecordResult> {
     if (isInternalTool(normalized.toolName)) {
       this.db.insertAudit(
         normalized.toolName,
@@ -215,14 +293,17 @@ export class ContextManager {
 
     let event: ToolEvent;
     let descriptor: ToolDescriptor;
+    const endArchive = this.runtime.operation({kind:'archive'});
     try {
       validateToolInput(normalized);
       descriptor = buildDescriptor(normalized.toolName, normalized.input, normalized.result, normalized.status);
       if (normalized.sideEffect) descriptor.isSideEffect = true;
       const saved = await this.archive.archive(normalized, 0, descriptor);
       event = saved;
+      endArchive({eventId:event.id});
       if (!saved.inserted) return { eventId: event.id, archived: true, internal: false };
     } catch (error) {
+      endArchive({status:'error'});
       this.logger.log('archive failed', { toolCallId: normalized.toolCallId, tool: normalized.toolName, error: errorMessage(error) });
       return { eventId: null, archived: false, internal: false, error: errorMessage(error) };
     }
@@ -240,6 +321,7 @@ export class ContextManager {
     });
     this.db.bumpStat('tools_archived');
 
+    const endChain = this.runtime.operation({kind:'chain',eventId:event.id});
     try {
       const link = await this.linker.linkEvent(event);
       if (link) {
@@ -253,7 +335,9 @@ export class ContextManager {
         await this.linker.refreshChainCapsule(link.chainId);
         await this.linker.maybeCompleteChain(link.chainId, event);
       }
+      endChain();
     } catch (e) {
+      endChain({status:'fallback'});
       this.logger.log('chain linking failed', {
         eventId: event.id,
         error: String(e),
@@ -619,7 +703,7 @@ export class ContextManager {
    * Enforces storage.retentionDays / storage.maxSizeBytes. Only COLD data
    * is ever removed: candidates are EVICTED events only — never HOT, never
    * capsule-state (capsule blobs back the archive), never pinned (in any
-   * session), never under recall protection. Victims are deleted
+   * session), never under recall or active-chain protection. Victims are deleted
    * oldest-evicted-first; blob files are removed only when no remaining
    * event references their content hash (dedup safety). With no caps
    * configured this is a no-op.
@@ -642,8 +726,7 @@ export class ContextManager {
       const live = this.db.queryOne<{n: number}>(
         "SELECT count(*) AS n FROM event_views v JOIN sessions s ON s.id=v.session_id WHERE v.event_id=? AND (v.state!='evicted' OR v.protected_until_turn>s.current_turn)", [row.id]);
       if (live && live.n > 0) return true;
-      const turn = this.db.getCurrentTurn(row.session_id);
-      return row.protected_until_turn > turn;
+      return Boolean(eventProtectionReason(this.db, row, activePreset(this.config).minProtectionTurns));
     };
 
     const deleteVictim = (row: ToolEventRow): void => {
@@ -710,6 +793,7 @@ export class ContextManager {
   }
 
   close(): void {
+    this.runtime.close();
     this.db.close();
     this.logger.close();
   }
