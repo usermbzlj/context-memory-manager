@@ -33,7 +33,7 @@ try {
   const tarball=path.join(tmp,packed.filename);
   // npm installs a local dependency archive into an isolated prefix without scripts.
   const prefix=path.join(tmp,'consumer');fs.mkdirSync(prefix);
-  // npm 11 refuses prefix installs while a user-level allow-scripts list is set; this one runs no scripts.
+  // npm run exports a configured allow-scripts list as npm_config_allow_scripts, which npm 11 rejects in a nested project-scoped install; this one runs no scripts.
   run([process.env.npm_execpath,'install','--offline','--ignore-scripts','--no-audit','--no-fund','--prefix',prefix,tarball],{...NPM_TIMEOUT,env:{...process.env,npm_config_allow_scripts:''}});
   const base=path.join(prefix,'node_modules','context-memory-manager');
   const {observeChild}=await import(pathToFileURL(path.join(base,'dist','src','util','child-lifecycle.js')).href);
