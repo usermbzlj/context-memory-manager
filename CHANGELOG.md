@@ -59,6 +59,11 @@
   about 300 s (undici's default) instead of the deadline.
 - Opening a new database retries `SQLITE_BUSY` while switching to WAL, which SQLite can return
   without consulting `busy_timeout` when several processes create the same database at once.
+  Table creation now runs inside the migration's `BEGIN IMMEDIATE` transaction instead of as
+  separate autocommit statements before it, and the migration is retried within the same bound
+  (a Windows Node 26 runner got `database is locked` there).
+- `demo` no longer fails after a finished proof when Windows briefly refuses to remove its
+  disposable directory; it reports the directory it left instead.
 
 ### Dashboard walkthrough fixes (2026-10-10)
 
@@ -77,13 +82,14 @@ display defects, now fixed:
 - A settings validation error is prefixed in Chinese and cleared when the form is edited.
 - The copyable "redacted" diagnostics summary reports the workspace as a short `sha256:` digest
   instead of the local path.
-- Tests: temporary-directory cleanup retries Windows `EBUSY`; `test:pack` allows npm up to 180 s
+- Tests: temporary-directory cleanup retries Windows `EBUSY`/`EPERM` itself (Node 24's `rmSync`
+  throws at once on Windows instead of honouring `maxRetries`); `test:pack` allows npm up to 180 s
   (a shared Windows runner exceeded 20 s); the native-scorer overall-deadline test gives two real
   loopback providers 1000 ms instead of 150 ms; a NaN deadline is treated as unbounded rather than 1 ms.
 
 Schema/source version unchanged; local RC, not published. Validation is recorded in
-`docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite: 309 tests, 308 pass, 0 fail, 1 Windows
-file-symlink skip (Node 24.19.0); the same build also passes on Node 22.16.0 (307 pass, 2 skips). Remote CI run
+`docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite: 310 tests, 309 pass, 0 fail, 1 Windows
+file-symlink skip (Node 24.19.0); the same build also passes on Node 22.16.0 (308 pass, 2 skips). Remote CI run
 37984233287 passed on Ubuntu, Windows and macOS with Node 22.16.0, 22, 24 and 26.
 
 ## 0.3.0-rc.2 Windows hook and evidence repairs - 2026-10-08

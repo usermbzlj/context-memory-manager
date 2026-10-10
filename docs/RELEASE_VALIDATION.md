@@ -12,10 +12,10 @@ local loopback servers only; no private archive, paid model, host trust change o
 | Executed check | Actual result |
 | --- | --- |
 | Starting snapshot (2026-10-09 source) | `npm test`: 229 tests, 227 pass, **1 fail**, 1 skip. Failure: cross-process configuration writers, `EPERM` creating `config.write.lock` |
-| Final clean source suite | `npm test`: **309 tests, 18 suites; 308 pass, 0 fail, 1 Windows file-symlink skip**, exit 0 |
-| Same build on Node 22.16.0 | `node --test dist/tests/*.test.js` on Windows: 309 tests, 307 pass, 0 fail, 2 skips (Windows file symlink; this Node build ignores `NODE_USE_ENV_PROXY`) |
-| Repeat runs | Before the dashboard fixes: full suite 5 times on Node 24 and 3 times on Node 22.16.0. One Node 22.16.0 round hit `EBUSY` removing a test's temporary directory on Windows; test cleanup now retries removal |
-| Remote CI | [Run 37968216772](https://github.com/usermbzlj/context-memory-manager/actions/runs/37968216772) on commit `39b36e6`: all 12 jobs pass (Ubuntu, Windows, macOS × Node 22.16.0, 22, 24, 26), including `npm test` and `npm run test:pack`. [Run 37968763110](https://github.com/usermbzlj/context-memory-manager/actions/runs/37968763110) on `ccb6c58` passed twice; a third attempt failed only because `npm install` of the tarball exceeded the package check's 20 s child timeout on Windows Node 22 (npm steps now get 180 s). [Run 37983373215](https://github.com/usermbzlj/context-memory-manager/actions/runs/37983373215) on `56d1363`: 11/12 pass; Windows Node 22.16.0 failed one test whose 150 ms overall deadline across two real loopback providers ended before the slow runner delivered the second request. The test now uses 1000 ms and still asserts the batch is bounded and falls back. [Run 37984233287](https://github.com/usermbzlj/context-memory-manager/actions/runs/37984233287) on `d34632a` (all fixes in this record): all 12 jobs pass |
+| Final clean source suite | `npm test`: **310 tests, 18 suites; 309 pass, 0 fail, 1 Windows file-symlink skip**, exit 0 |
+| Same build on Node 22.16.0 | `node --test dist/tests/*.test.js` on Windows: 310 tests, 308 pass, 0 fail, 2 skips (Windows file symlink; this Node build ignores `NODE_USE_ENV_PROXY`) |
+| Repeat runs | Before the dashboard fixes: 5 full rounds on Node 24 and 3 on Node 22.16.0; one Node 22.16.0 round hit `EBUSY` removing a test's temporary directory. Later, 3 more rounds each: one Node 24 round hit `EPERM` there because Node 24's `rmSync` on Windows throws at once instead of honouring `maxRetries` (Node 22.16.0 retries); tests now retry removal themselves. Final code: 3 more rounds on each version plus the two suites above, all pass |
+| Remote CI | 12 jobs per run (Ubuntu, Windows, macOS × Node 22.16.0, 22, 24, 26), each running `npm test` and `npm run test:pack`; runs and the failures they exposed are listed below |
 | Configuration writers | Cross-process concurrency and lock-recovery files repeated 10 times: 10/10 pass. Dead same-host holder recovered; live, foreign-host, unreadable and older-format locks refused with bytes unchanged; release never removes a lock it does not own |
 | Offline distributable | `npm run test:pack`: actual tarball installs offline; dashboard assets/auth and exact download, generated hook capture and fail-open, setup/uninstall, MCP handshake and demo pass |
 | Windows smoke | `scripts/windows-smoke.ps1` passes under PowerShell 5.1 and 7 with the default 936 console code page; liveAgentTested=false |
@@ -42,6 +42,29 @@ failed; the failures were real and are fixed:
   303 s on Node 22.16.0: after garbage collection the weakly held timeout signal no longer reached
   `fetch`. The new GC regression test reproduces the hang locally on Node 22.16.0 for all three
   fetch-based providers before the fix and passes after it; the WAL retry is verified only by CI.
+
+Remote runs after those fixes, including repeated attempts of an unchanged commit to look for
+intermittent failures:
+
+- [37968216772](https://github.com/usermbzlj/context-memory-manager/actions/runs/37968216772)
+  on `39b36e6`: 12/12.
+- [37968763110](https://github.com/usermbzlj/context-memory-manager/actions/runs/37968763110)
+  on `ccb6c58`: attempts 1 and 2 12/12. Attempt 3: `npm install` of the tarball exceeded the
+  package check's 20 s child timeout on Windows Node 22; npm steps now get 180 s.
+- [37983373215](https://github.com/usermbzlj/context-memory-manager/actions/runs/37983373215)
+  on `56d1363`: Windows Node 22.16.0 failed a test whose 150 ms overall deadline across two real
+  loopback providers ended before the slow runner delivered the second request. The test now
+  uses 1000 ms and still asserts the batch is bounded and falls back.
+- [37984233287](https://github.com/usermbzlj/context-memory-manager/actions/runs/37984233287)
+  on `d34632a`: 12/12.
+  [37984735397](https://github.com/usermbzlj/context-memory-manager/actions/runs/37984735397)
+  on `b1ed8ad`: attempts 1 to 3 12/12. Attempt 4: on Windows Node 26 one of three processes
+  creating and writing one database got `database is locked` from the table-creation statements,
+  which ran as separate autocommit statements before the migration transaction despite
+  `busy_timeout`. Table creation now runs inside the migration's `BEGIN IMMEDIATE` transaction and
+  the whole migration is retried within 5 s on `SQLITE_BUSY`. Not reproduced locally: 10 to 15
+  rounds of 6 to 8 concurrent writers on Node 22.16.0, 24 and 26 all passed, before and after
+  the fix, so this fix is verified only by CI.
 
 Logs: `windows-2026-10-10-baseline-tests.txt`, `windows-2026-10-10-tests.txt`,
 `windows-2026-10-10-tests-node22.16.txt`, `windows-2026-10-10-package.txt`,
