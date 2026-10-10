@@ -9,7 +9,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
-import { SCHEMA_SQL, SCHEMA_VERSION, runMigrations } from './schema.js';
+import { SCHEMA_VERSION, runMigrations } from './schema.js';
 import type {
   CapsuleRow,
   ChainRow,
@@ -82,7 +82,7 @@ export interface ProviderCallRow {
 }
 
 const pause = new Int32Array(new SharedArrayBuffer(4));
-/** SQLite can return BUSY for a journal-mode switch without consulting busy_timeout, e.g. when
+/** SQLite can return BUSY without consulting busy_timeout, e.g. for a journal-mode switch when
  * several processes create the same database at once; retry synchronously within a bound. */
 function retryBusy<T>(fn: () => T, budgetMs: number): T {
   const until = Date.now() + budgetMs;
@@ -115,8 +115,7 @@ export class Database {
       const version = (db.prepare('PRAGMA user_version').get() as {user_version: number}).user_version;
       if (version > SCHEMA_VERSION) throw new Error(`Database schema ${version} is newer than supported ${SCHEMA_VERSION}`);
       retryBusy(() => db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;'), 5000);
-      db.exec(SCHEMA_SQL);
-      runMigrations(db);
+      retryBusy(() => runMigrations(db), 5000);
       return new Database(db);
     } catch (error) { db.close(); throw error; }
   }

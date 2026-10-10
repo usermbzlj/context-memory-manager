@@ -190,6 +190,9 @@ export function runMigrations(db: DbLike): void {
   try {
     const version = (db.prepare('PRAGMA user_version').get() as {user_version: number}).user_version;
     if (version > SCHEMA_VERSION) throw new Error(`Database schema ${version} is newer than supported ${SCHEMA_VERSION}; refusing to downgrade`);
+    // Under the write lock taken by BEGIN IMMEDIATE: as separate autocommit statements, a process
+    // creating tables while another writes could get SQLITE_BUSY without busy_timeout being used.
+    db.exec(SCHEMA_SQL);
     const recall = columns(db, 'recall_log');
     if (!recall.has('safe_to_evict')) db.exec('ALTER TABLE recall_log ADD COLUMN safe_to_evict REAL');
     if (!recall.has('decision')) db.exec('ALTER TABLE recall_log ADD COLUMN decision TEXT');
