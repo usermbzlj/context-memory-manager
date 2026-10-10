@@ -65,11 +65,13 @@ intermittent failures:
   the whole migration is retried within 5 s on `SQLITE_BUSY`. Not reproduced locally: 10 to 15
   rounds of 6 to 8 concurrent writers on Node 22.16.0, 24 and 26 all passed, before and after
   the fix, so this fix is verified only by CI.
+- [38039102635](https://github.com/usermbzlj/context-memory-manager/actions/runs/38039102635)
+  on `14e2748` (all fixes in this record): attempts 1 to 4 all 12/12.
 
 Logs: `windows-2026-10-10-baseline-tests.txt`, `windows-2026-10-10-tests.txt`,
 `windows-2026-10-10-tests-node22.16.txt`, `windows-2026-10-10-package.txt`,
 `windows-2026-10-10-smoke-ps5.txt` and `windows-2026-10-10-smoke-ps7.txt` under `docs/validation`
-(local paths replaced by placeholders). One green CI run is not a flakiness guarantee.
+(local paths replaced by placeholders). Repeated green CI attempts are not a flakiness guarantee.
 
 An agent-driven browser walkthrough (not user acceptance) covered every dashboard page and the
 original-text drawer against disposable synthetic storage, deleted afterwards. It found that search
