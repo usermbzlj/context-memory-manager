@@ -7,6 +7,7 @@ import { normalizeWorkspaceId, resolveWorkspaceId } from '../src/storage/archive
 import { Database } from '../src/storage/sqlite.js';
 import { ContextManager } from '../src/core/context-manager.js';
 import { MemoryService, sessionKey } from '../src/runtime/memory.js';
+import { removeDir } from './remove-dir.js';
 
 function temporaryRoot(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'cmm-workspace-regression-'));
@@ -16,7 +17,7 @@ function removeTemporaryRoot(dir: string): void {
   const relative = path.relative(path.resolve(os.tmpdir()), path.resolve(dir));
   assert.ok(relative && !relative.startsWith('..') && !path.isAbsolute(relative));
   assert.ok(path.basename(dir).startsWith('cmm-workspace-regression-'));
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  removeDir(dir);
 }
 
 test('Windows drive and UNC identities are lexical, idempotent and preserve component case', t => {

@@ -11,11 +11,12 @@ import { ContextManager } from '../src/core/context-manager.js';
 import { MemoryService } from '../src/runtime/memory.js';
 import { rowToToolEvent } from '../src/types.js';
 import { createRuntimeObserver, enableRuntime, readRuntime, RUNTIME_LIMITS } from '../src/observability/runtime.js';
+import { removeDir } from './remove-dir.js';
 
 const scope={agent:'codex',workspaceId:'synthetic-hardening-workspace'};
 const immediate={publishMs:0,leaseCacheMs:0};
 const temporary=()=>fs.mkdtempSync(path.join(os.tmpdir(),'cmm-obs-hardening-'));
-const remove=(root:string)=>fs.rmSync(root,{recursive:true,force:true,maxRetries:10,retryDelay:100});
+const remove=(root:string)=>removeDir(root);
 const slotFile=(root:string,index:number)=>path.join(root,'runtime',`slot-${String(index).padStart(3,'0')}.json`);
 const slots=(root:string)=>fs.readdirSync(path.join(root,'runtime')).filter(name=>name.startsWith('slot-')).map(name=>path.join(root,'runtime',name));
 const read=(file:string)=>JSON.parse(fs.readFileSync(file,'utf8'));

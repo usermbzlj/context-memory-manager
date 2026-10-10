@@ -12,6 +12,7 @@ import { JevScorer } from '../src/scoring/jev.js';
 import { FakeProvider } from '../src/providers/fake.js';
 import { rowToToolEvent } from '../src/types.js';
 import { normalizeWorkspaceId } from '../src/storage/archive.js';
+import { removeDir } from './remove-dir.js';
 import type { ToolEvent, ToolEventInput } from '../src/types.js';
 
 let toolCallCounter = 0;
@@ -63,7 +64,7 @@ export function sampleInput(partial: Partial<ToolEventInput> = {}): ToolEventInp
 export async function cleanup(dir: string, manager: ContextManager): Promise<void> {
   const registered=resources.get(manager) ?? [];
   resources.delete(manager);
-  await cleanupAll(...registered.reverse(),()=>manager.close(),()=>{fs.rmSync(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100});});
+  await cleanupAll(...registered.reverse(),()=>manager.close(),()=>removeDir(dir));
 }
 
 /**

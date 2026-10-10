@@ -12,12 +12,13 @@ import { createLogger } from '../src/logging.js';
 import { configRevision } from '../src/config.js';
 import { rowToToolEvent } from '../src/types.js';
 import { createRuntimeObserver, enableRuntime, observeOperation, readRuntime, RUNTIME_LIMITS } from '../src/observability/runtime.js';
+import { removeDir } from './remove-dir.js';
 
 const scope={agent:'codex',workspaceId:'synthetic-observation-workspace'};
 // These tests read the channel right after each call, so they opt out of the production lease cache and publish coalescing.
 const immediate={publishMs:0,leaseCacheMs:0};
 function temporary() { return fs.mkdtempSync(path.join(os.tmpdir(),'cmm-observability-')); }
-function remove(root: string) { fs.rmSync(root,{recursive:true,force:true,maxRetries:10,retryDelay:100}); }
+function remove(root: string) { removeDir(root); }
 function slot(root: string) { return fs.readdirSync(path.join(root,'runtime')).filter(name=>name.startsWith('slot-')).map(name=>path.join(root,'runtime',name)); }
 async function child(source: string, root: string): Promise<void> {
   const peer=spawn(process.execPath,['--input-type=module','-e',source],{env:{...process.env,CMM_OBS_STORAGE:root},windowsHide:true,stdio:['ignore','pipe','pipe']});

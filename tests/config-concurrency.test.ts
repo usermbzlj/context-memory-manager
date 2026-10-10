@@ -5,9 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {defaultConfig,saveConfig,loadConfig,configRevision,updateConfig} from '../src/config.js';
+import {removeDir} from './remove-dir.js';
 
 test('configuration writers in independent processes reread under lock and preserve other fields',async t=>{
-  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cmm-config-lock-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cmm-config-lock-'));t.after(()=>removeDir(dir));
   const cfg=defaultConfig(dir);cfg.providers.retention=[{kind:'fake',name:'synthetic',model:'fixture',apiKey:'KEEP_PRIVATE'}];saveConfig(cfg);
   const moduleUrl=new URL('../src/config.js',import.meta.url).href;
   const patches=[{integration:{captureOnly:true}},{integration:{historyCooldownTurns:9}},{logging:{level:'warn'}}];

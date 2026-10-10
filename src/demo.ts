@@ -53,6 +53,11 @@ export async function runDemo(): Promise<void> {
       recallPages:pages,sha256:sha256(original),exactRecallVerified:true,
       note:'Synthetic trace with supplied estimated usage. Character counts are not measured API tokens, cost savings, cache hits or task quality.',
       excerpt:projected.text.slice(0,800)},null,2)+'\n');
-  } finally {manager.close();fs.rmSync(dir,{recursive:true,force:true});}
+  } finally {
+    manager.close();
+    // Windows may briefly hold a just-written file open (e.g. antivirus); that must not fail a finished proof.
+    try {fs.rmSync(dir,{recursive:true,force:true});}
+    catch (error) {process.stderr.write(`Demo storage was not removed (${(error as NodeJS.ErrnoException).code ?? 'error'}): ${dir}\n`);}
+  }
 }
 if(isEntryPoint(import.meta.url))runDemo().catch(e=>{console.error(e);process.exitCode=1;});

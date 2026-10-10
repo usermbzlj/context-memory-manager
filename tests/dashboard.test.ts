@@ -5,6 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { startDashboard } from '../src/dashboard/server.js';
 import { makeManager, cleanup, sampleInput } from './util.js';
+import { removeDir } from './remove-dir.js';
 
 test('installed-assets dashboard authenticates, blocks cross-origin/CSRF, and preserves verified original downloads',async t=>{
   const {manager,dir}=await makeManager();
@@ -68,7 +69,7 @@ test('a worker that never acknowledges startJob cannot pin a queue slot or a run
   fs.writeFileSync(stub,`process.send({type:'ready'});process.stdin.resume();process.stdin.on('end',()=>process.exit(0));process.on('disconnect',()=>process.exit(0));
 process.on('message',m=>{if(m.method==='scope')process.send({type:'response',id:m.id,result:{agent:'a',workspaceId:'w'}});});`);
   const dashboard=await startDashboard({storage:dir,internals:{worker:stub,requestMs:100,lateMs:600}});
-  t.after(async()=>{await dashboard.close();fs.rmSync(path.dirname(stub),{recursive:true,force:true,maxRetries:10,retryDelay:100});await cleanup(dir,manager);});
+  t.after(async()=>{await dashboard.close();removeDir(path.dirname(stub));await cleanup(dir,manager);});
   const url=dashboard.url,token=new URL(dashboard.launchUrl).hash.slice('#token='.length);
   const login=await fetch(url+'/api/session',{method:'POST',headers:{'content-type':'application/json',origin:url},body:JSON.stringify({token})});
   const headers={'content-type':'application/json',origin:url,cookie:login.headers.get('set-cookie')!.split(';')[0],'x-cmm-csrf':(await login.json() as {csrfToken:string}).csrfToken};

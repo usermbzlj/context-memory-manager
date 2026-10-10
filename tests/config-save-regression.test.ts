@@ -7,11 +7,12 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { defaultConfig, loadConfig, saveConfig } from '../src/config.js';
 import type { Config } from '../src/types.js';
+import { removeDir } from './remove-dir.js';
 
 const cli = fileURLToPath(new URL('../src/cli.js', import.meta.url));
 function fixture(t: TestContext) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cmm-config-save-'));
-  t.after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
+  t.after(() => removeDir(dir));
   const cfg = defaultConfig(dir);
   saveConfig(cfg);
   return { dir, cfg, file: path.join(dir, 'config.json') };
