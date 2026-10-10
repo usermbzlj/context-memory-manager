@@ -1,0 +1,38 @@
+OpenCode 2.x live session record (Windows, 2026-10-10)
+opencode --version: opencode v2.0.26
+cmm --version: 0.3.0-rc.2
+node: v24.19.0
+model: opencode/big-pickle (OpenCode Zen free tier; limit.context 200000, limit.input 160000; cost 0)
+install: cmm setup opencode --global (user plugin <home>/.config/opencode/plugins/context-memory-manager.ts); opencode plugin list:
+ID                      VERSION  SOURCE
+context-memory-manager  local    <home>\.config\opencode\plugins\context-memory-manager.ts
+
+== Run 1: 12 sequential whole-file reads (about 43 KB each), context_search, context_recall ==
+cmm status (archive/states/receipts/batches):
+{"scope":{"agent":"opencode","workspaceId":"<temp>\\cmm-oc-live"},"archive":{"events":18,"bytes":525631},"states":[{"state":"hot","count":18}],"projectionReceipts":{"originalChars":0,"visibleChars":0},"historyBatches":[]}
+18 events = 12 reads + 6 echo shell calls from a continuation of the same session.
+retention decisions: keep=15 (turns 10-11; fresh reads score 0.25-0.35, below the 0.5 keep threshold)
+OpenCode compacted the session after read 12 (provider-reported request about 152k tokens of the 160k input limit); the reads left the outgoing requests before CMM's fresh-evidence policy allowed projection. Model answer reproduced the needle exactly via context_search + context_recall.
+
+== Run 2: 9 reads, 7 echo shell calls, context_status, recall of log 01 entry 333 ==
+{"scope":{"agent":"opencode","workspaceId":"<temp>\\cmm-oc-live2"},"archive":{"events":16,"bytes":394800},"states":[{"state":"capsule","count":1},{"state":"hot","count":15}],"projectionReceipts":{"originalChars":44230,"visibleChars":7950},"historyBatches":[{"session_id":"cmm:d9e19ca49796d2d9c68c54e1de04a1c73b63106610b711d03f0eb67edf2c654e","last_turn":12,"batches":1,"source":"estimated","before_chars":394351,"after_chars":358071,"changed_events":1,"updated_at":1791625534363}],"health":[{"agent":"opencode","mode":"opencode","last_seen":1791625563527,"observations":16,"last_error":null}]}
+session compactions: 0
+persisted first read: 44230 chars, starts with CMM marker: False
+provider-reported request tokens (input + cache read), last 12 assistant steps:
+  input=12210 cacheRead=91456 total=103666
+  input=12206 cacheRead=103616 total=115822
+  input=95 cacheRead=115776 total=115871
+  input=67 cacheRead=115840 total=115907
+  input=99714 cacheRead=6272 total=105986
+  input=38 cacheRead=105984 total=106022
+  input=74 cacheRead=105984 total=106058
+  input=46 cacheRead=106048 total=106094
+  input=82 cacheRead=106048 total=106130
+  input=457 cacheRead=106112 total=106569
+  input=861 cacheRead=106560 total=107421
+  input=3742 cacheRead=107392 total=111134
+model final answer: 333: log 01 entry 333: status metrics queue service request delivery storage
+file line 333:     log 01 entry 333: status metrics queue service request delivery storage
+
+== Background service check (non-standalone opencode run) ==
+context_status via service reported archive.events=16 for the run 2 project

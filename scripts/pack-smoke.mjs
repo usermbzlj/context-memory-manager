@@ -22,6 +22,7 @@ try {
   assert.ok(process.env.npm_execpath,'Run this check with npm run test:pack');
   const packed=JSON.parse(run([process.env.npm_execpath,'pack','--offline','--ignore-scripts','--json','--pack-destination',tmp],NPM_TIMEOUT))[0];
   assert.ok(packed.files.some(f=>f.path==='dist/src/integrations/opencode.js'));
+  assert.ok(packed.files.some(f=>f.path==='dist/src/integrations/opencode-v2.js'));
   assert.ok(packed.files.some(f=>f.path==='dist/src/cli.js'));
   assert.ok(packed.files.some(f=>f.path==='dist/src/dashboard/assets/index.html'));
   assert.ok(packed.files.some(f=>/^dist\/src\/dashboard\/assets\/assets\/.+\.js$/.test(f.path)));
@@ -32,7 +33,8 @@ try {
   const tarball=path.join(tmp,packed.filename);
   // npm installs a local dependency archive into an isolated prefix without scripts.
   const prefix=path.join(tmp,'consumer');fs.mkdirSync(prefix);
-  run([process.env.npm_execpath,'install','--offline','--ignore-scripts','--no-audit','--no-fund','--prefix',prefix,tarball],NPM_TIMEOUT);
+  // npm 11 refuses prefix installs while a user-level allow-scripts list is set; this one runs no scripts.
+  run([process.env.npm_execpath,'install','--offline','--ignore-scripts','--no-audit','--no-fund','--prefix',prefix,tarball],{...NPM_TIMEOUT,env:{...process.env,npm_config_allow_scripts:''}});
   const base=path.join(prefix,'node_modules','context-memory-manager');
   const {observeChild}=await import(pathToFileURL(path.join(base,'dist','src','util','child-lifecycle.js')).href);
   if(interrupted)throw new Error('Pack smoke interrupted');

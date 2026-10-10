@@ -1,6 +1,6 @@
 # Upstream contracts and audit provenance
 
-Reviewed for this revision: 2026-10-02; host and MCP contracts re-checked 2026-10-07. These are implementation references, not live-host
+Reviewed for this revision: 2026-10-02; host and MCP contracts re-checked 2026-10-07; OpenCode 2.x added 2026-10-10. These are implementation references, not live-host
 certification, benchmark results or a claim that every mentioned integration was retested against
 every current upstream binary. Public documentation can change independently of a tagged release.
 
@@ -62,6 +62,30 @@ command through a shell in the session directory, and sends `tool_output` as the
 UTF-16 units of text parts. It has no per-launch config flag, which retired the old wrapper.
 
 OpenCode 1.18.35 still exposes `tool.execute.after` and `experimental.chat.messages.transform`.
+
+## OpenCode 2.x plugin API
+
+Pinned source: `anomalyco/opencode`, tag `v2.0.26` (commit `9b4ec5714d48`), read 2026-10-10.
+- **Module shape:** `packages/core/src/plugin/module.ts` decodes the default export as
+  `{ id, setup }` or `{ id, effect }` and rejects a function, so 1.x plugin files do not load.
+- **Promise context:** `packages/plugin/src/promise/` gives `location`, `tool.transform`,
+  `tool.hook("execute.after")`, `tool.list`, `session.hook("context")` and `model.list`. Hook
+  callbacks run inside `Effect.promise`, so a rejected callback is a host defect, not an ignored error.
+- **Tool results:** `packages/core/src/tool/runtime.ts` defines the visible content
+  (`normalizeContent`/`stringify`). A tool without an output schema must not return `output`. JSON
+  Schema inputs are accepted.
+- **Code mode:** in `packages/core/src/tool.ts`, tools without `codemode: false` are reachable only
+  through `execute`. Inner calls reuse the `execute` call context and its ID
+  (`packages/core/src/codemode/tool.ts`).
+- **Request messages:** `packages/core/src/session/runner/to-llm-message.ts` lowers a completed
+  result with exactly one text part to `tool-result.result = {type:"text"}`. Locally executed results
+  live in `role:"tool"` messages, and provider-executed results stay inside assistant content.
+- **Request hook:** `packages/core/src/session/model-request.ts` passes the hook's `messages` into the
+  request it builds; requests are rebuilt from persisted history for each step.
+- **Workspace:** `packages/core/src/project.ts` resolves `project.directory` to the git worktree, the
+  hg root or the directory itself.
+- **Plugin files:** global plugins load from `plugin/` or `plugins/` in
+  `OPENCODE_CONFIG_DIR`/`$XDG_CONFIG_HOME/opencode`.
 
 MCP support is tools-only stdio. Legacy clients negotiate 2024-11-05 through 2025-11-25 with
 `initialize`. The memory server also implements the stateless 2026-07-28 surface it needs:

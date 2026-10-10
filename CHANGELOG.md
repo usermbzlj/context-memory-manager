@@ -2,6 +2,18 @@
 
 ## 0.3.0-rc.2 dashboard, native scoring and hardening - 2026-10-10
 
+### OpenCode 2.x (2026-10-10)
+
+- OpenCode 2.x rejects 1.x plugin files, so the generated plugin stopped loading. A new 2.x adapter
+  (`integrations/opencode-v2.js`, the `{ id, setup }` API) archives the exact model-visible
+  result text in `execute.after`. It registers the five recall tools outside code mode and
+  projects eligible historical text only in the outgoing request through the session `context`
+  hook. Code-mode inner calls are archived under derived call IDs, and every hook fails open.
+- `cmm setup opencode` picks the plugin API from `opencode --version` (`--opencode-api 1|2`
+  overrides it; 1.x stays the fallback). `--global` installs one user-level 2.x plugin whose
+  archive scope follows each project location, and `cmm uninstall opencode --global` removes it.
+- The 1.x and 2.x adapters share one bridge core. Its capture cache key now includes the tool name.
+
 ### Added (2026-10-09)
 
 - `cmm dashboard`: local loopback management UI (React/Vite, build-time-only dependencies) with
@@ -88,8 +100,8 @@ display defects, now fixed:
   loopback providers 1000 ms instead of 150 ms; a NaN deadline is treated as unbounded rather than 1 ms.
 
 Schema/source version unchanged; local RC, not published. Validation is recorded in
-`docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite: 310 tests, 309 pass, 0 fail, 1 Windows
-file-symlink skip (Node 24.19.0); the same build also passes on Node 22.16.0 (308 pass, 2 skips). Remote CI run
+`docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite after the OpenCode 2.x change: 321 tests, 320 pass, 0 fail, 1 Windows
+file-symlink skip (Node 24.19.0); the same build also passes on Node 22.16.0 (319 pass, 2 skips). Before it, remote CI run
 38039102635 passed four times on Ubuntu, Windows and macOS with Node 22.16.0, 22, 24 and 26.
 
 ## 0.3.0-rc.2 Windows hook and evidence repairs - 2026-10-08

@@ -1,6 +1,7 @@
 # Agent integrations and their boundaries
 
-Contracts were re-checked on **2026-10-07** against OpenCode 1.18.35 plugin source, the current
+The OpenCode 2.x contract was checked on **2026-10-10** against OpenCode 2.0.26 source (tag
+v2.0.26) and a live Windows session. Other contracts were re-checked on **2026-10-07** against OpenCode 1.18.35 plugin source, the current
 Claude Code hooks reference, Codex hooks/MCP docs, Kimi Code 2.1.1 source and MCP 2026-07-28.
 See `UPSTREAM_CONTRACTS.md` for source provenance and live-test limitations.
 An adapter test verifies our interpretation of a contract; it does not certify a live host.
@@ -9,12 +10,54 @@ Run setup from the project root or give `--workspace` explicitly.
 
 ## OpenCode: historical text-result projection
 
+`cmm setup opencode` asks the installed `opencode --version` which plugin API to generate
+(`--opencode-api 1|2` overrides it; undetectable means 1.x). Both generations write the same
+marked `.opencode/plugins/context-memory-manager.ts`; only one CMM plugin should be active per project.
+
+### OpenCode 2.x
+
 ```powershell
-cmm setup opencode --workspace "D:\MyProject" --dry-run
-cmm setup opencode --workspace "D:\MyProject"
+cmm setup opencode --global --dry-run
+cmm setup opencode --global
+cmm setup opencode --opencode-api 2 --workspace "D:\MyProject"   # project-only alternative
 ```
 
-This writes a marked `.opencode/plugins/context-memory-manager.ts`. The generated file
+`--global` writes a marked `plugins/context-memory-manager.ts` into the OpenCode user config
+(`OPENCODE_CONFIG_DIR`, else `$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`). OpenCode
+instantiates it per project location, and each instance scopes its archive to that location's
+project directory: the git worktree root, or the directory itself outside version control. One
+global install therefore never merges projects. The file is a plain `{ id, setup }` default
+export that imports the installed CMM by absolute file URL; it needs no host package.
+`cmm uninstall opencode --global` removes only that marked file. OpenCode watches the file and
+reloads it; otherwise restart its service.
+
+- **Recall tools:** the five memory tools are registered with `codemode: false`, so the model
+  calls them directly instead of through OpenCode's `execute` code tool.
+- **Capture:** `execute.after` archives the exact model-visible text. That is the string content, a
+  single text part, or `JSON.stringify(output)` when content is empty, mirroring the host's
+  normalization. Text-only multi-part results (for example a shell result plus its exit notice)
+  are archived as their JSON parts and never projected. Results carrying files and error results
+  are not captured. `metadata.truncated=true` marks partial evidence and a non-zero
+  `metadata.exit` marks an error. Code-mode calls run inside `execute` under its call ID, so they
+  are archived as evidence under derived IDs and cannot be confused with the `execute` result.
+- **Projection:** the `session` `context` hook runs before each agent-loop model call. It captures
+  missed results, estimates usage from the outgoing system prompt and messages, takes the window
+  from the model's `limit.input` or `limit.context`, and replaces eligible `tool-result` text only
+  in that outgoing request. OpenCode rebuilds each request from persisted history, so stored
+  sessions are untouched. System text, user text, assistant prose, tool calls, errors, file
+  results and provider-executed results are never edited. Compaction and title requests use other
+  hooks and are untouched.
+- **Fail-open:** every hook catches its own failure; OpenCode turns a rejected hook into a host
+  defect. Tool failures return a JSON error. Disposal releases the registrations, then the bridge.
+
+### OpenCode 1.x
+
+```powershell
+cmm setup opencode --opencode-api 1 --workspace "D:\MyProject" --dry-run
+cmm setup opencode --opencode-api 1 --workspace "D:\MyProject"
+```
+
+The generated 1.x file
 imports the host's `tool` factory and the installed CMM plugin by an absolute file URL.
 It retains the Node executable path used by setup. Re-run setup after moving the installation
 or switching Node installations. The host provides `@opencode-ai/plugin`; CMM does not install
@@ -37,9 +80,9 @@ not become a global-root archive shared with every other non-git project.
 Plugin disposal is awaitable and idempotent. It waits for the Node bridge and its streams to
 close before storage can be removed; pending requests fail without upstream retries.
 
-**Limits:** the transform API is experimental; host changes may require a revised adapter.
-The plugin factory and actual Node bridge were exercised under Node, not a live OpenCode/Bun
-session. Context usage is estimated from visible messages with the reported model limit when available,
+**Limits:** the 1.x transform API is experimental and 2.x hooks are young; host changes may
+require a revised adapter. The 1.x plugin factory was exercised under Node, not a live 1.x/Bun
+session. For 2.x see the live record in `RELEASE_VALIDATION.md`. Context usage is estimated from visible messages with the reported model limit when available,
 not measured provider billing. Very large outputs may exceed the 32 MiB bridge frame bound;
 those remain unchanged. Native host compaction still exists and is not disabled.
 

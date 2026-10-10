@@ -60,13 +60,21 @@ node .\dist\src\cli.js setup opencode --workspace "D:\MyProject" --dry-run
 node .\dist\src\cli.js setup opencode --workspace "D:\MyProject"
 ```
 
+Setup detects the plugin API from `opencode --version`. With OpenCode 2.x, one user-level install
+covers every project, each with its own archive scope:
+
+```powershell
+cmm setup opencode --global --dry-run
+cmm setup opencode --global
+```
+
 Restart the host and follow its normal trust prompts. Setup records absolute CMM/Node paths;
 keep this directory in place. Re-run setup after moving it. Use the same agent, workspace and
 storage for search and diagnostics. CLI's default agent is `cli`, not your last-used host.
 
 | Integration | Default behavior | Optional behavior / important boundary |
 | --- | --- | --- |
-| OpenCode | Capture, first-presentation protection, pressure-triggered historical text projection | Experimental host transform API; Node bridge, not native Bun SQLite |
+| OpenCode 1.x / 2.x | Capture, first-presentation protection, pressure-triggered historical text projection | 1.x experimental transform / 2.x `context` hook; Node bridge, not native Bun SQLite |
 | Claude Code | Capture + MCP retrieval; original first result unchanged | Explicit opt-in for a shape-preserving, successful Bash stdout ingress projection |
 | Codex | Capture + MCP retrieval | No native CMM history or result rewriting |
 | Kimi Code 2.x | Capture through user-level hooks scoped to this workspace + MCP retrieval | Kimi sends at most 2,000 UTF-16 units of output; a result at that limit is archived as partial. No rewriting |
@@ -185,7 +193,7 @@ npm test
 npm run test:pack
 ```
 
-2026-10-10 Windows full suite: 310 tests, 309 pass, 0 fail, 1 Windows file-symlink skip; the same build also passes on Node 22.16.0 (308 pass, 2 skips). It includes original regressions, actual
+2026-10-10 Windows full suite: 321 tests, 320 pass, 0 fail, 1 Windows file-symlink skip; the same build also passes on Node 22.16.0 (319 pass, 2 skips). It includes original regressions, actual
 v0.1/v0.2 schema fixtures, corruption checks, concurrent writers, independent protocol peers,
 RTK schema fixtures, dashboard HTTP/worker tests and real CLI subprocesses. Counts, commands and
 exact boundaries are in [the validation record](docs/RELEASE_VALIDATION.md). The distributable check installs the actual local
@@ -200,8 +208,11 @@ Remote CI [run 38039102635](https://github.com/usermbzlj/context-memory-manager/
 The installed Codex 0.162.0-alpha.2 binary also discovers the project configuration and all
 five MCP tools. Its capture hook is parsed but still requires user trust; native capture and
 in-session recall are not yet certified. See the validation record for the exact boundary.
+The installed OpenCode 2.0.26 loaded the global plugin. In two short synthetic free-model sessions
+it archived reads, called the recall tools directly, projected history in the outgoing request
+only (persisted session unchanged) and recalled the exact projected line afterwards.
 
-Not yet verified: real-model Kimi, Claude, Codex and OpenCode/Bun sessions; Codex native capture
+Not yet verified: real-model Kimi, Claude, Codex and OpenCode 1.x sessions; Codex native capture
 after the modified hook is re-trusted; task quality and context-token or
 cost effect of history projection; real-model quality of native/remote scoring; and a user's
 browser acceptance of the dashboard.

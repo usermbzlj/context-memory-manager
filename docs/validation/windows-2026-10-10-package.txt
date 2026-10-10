@@ -19,13 +19,13 @@ dist/src/dashboard/assets/index.html                   0.42 kB 鈹?gzip:  0.31 k
 dist/src/dashboard/assets/assets/index-BfISV-lD.css   23.68 kB 鈹?gzip:  5.25 kB
 dist/src/dashboard/assets/assets/index-CiroWwKR.js   280.59 kB 鈹?gzip: 88.51 kB
 
-鉁?built in 173ms
+鉁?built in 112ms
 {
   "package": "context-memory-manager-0.3.0-rc.2.tgz",
-  "sha256": "995c89df128c7091b667ad98c8cdd47bd92ad77107c49c298ac6308980b41eb8",
-  "files": 199,
-  "packedBytes": 526672,
-  "unpackedBytes": 1868071,
+  "sha256": "5ffb3fd5cde11b041852fe057a393eda23b407b02419d82b84956dc37cbae156",
+  "files": 205,
+  "packedBytes": 540725,
+  "unpackedBytes": 1923214,
   "isolatedInstall": true,
   "registryRequired": false,
   "help": true,
@@ -52,6 +52,6 @@ dist/src/dashboard/assets/assets/index-CiroWwKR.js   280.59 kB 鈹?gzip: 88.51 k
     "sha256": "faba2c8e5eb0c22a6c8c672d2aa4f62c4de1c1de0be4d865fd54437def563f1a",
     "exactRecallVerified": true,
     "note": "Synthetic trace with supplied estimated usage. Character counts are not measured API tokens, cost savings, cache hits or task quality.",
-    "excerpt": "[CMM archive 13608c5b-3b1b-45da-bf0f-ac059a04f748] Read | ok\nEvidence extract, NOT the full result. Captured: 177048 UTF-16 chars.\nExact captured text; completeness before the observation boundary is unknown.\nRead: context_recall({\"eventId\":\"13608c5b-3b1b-45da-bf0f-ac059a04f748\",\"offset\":0,\"limit\":12000}).\nRead artifacts/test.log 鈫?success\nexit code: 0\ntests: 3000 passed, 0 failed\nSUMMARY: 3000 passed; 0 failed. Exit code: 0.\npath: artifacts/test.log\n--- verbatim head ---\nPASS case-0000: cache, retry and archive evidence verified\nPASS case-0001: cache, retry and archive evidence verified\nPASS case-0002: cache, retry and archive evidence verified\nPASS case-0003: cache, retry and archive evidence verified\nPASS case-0004: cache, retry and archive evidence verified\nPASS case-0005: cache, retry"
+    "excerpt": "[CMM archive 18c27d69-3aa4-4bd3-b335-c680304d3b11] Read | ok\nEvidence extract, NOT the full result. Captured: 177048 UTF-16 chars.\nExact captured text; completeness before the observation boundary is unknown.\nRead: context_recall({\"eventId\":\"18c27d69-3aa4-4bd3-b335-c680304d3b11\",\"offset\":0,\"limit\":12000}).\nRead artifacts/test.log 鈫?success\nexit code: 0\ntests: 3000 passed, 0 failed\nSUMMARY: 3000 passed; 0 failed. Exit code: 0.\npath: artifacts/test.log\n--- verbatim head ---\nPASS case-0000: cache, retry and archive evidence verified\nPASS case-0001: cache, retry and archive evidence verified\nPASS case-0002: cache, retry and archive evidence verified\nPASS case-0003: cache, retry and archive evidence verified\nPASS case-0004: cache, retry and archive evidence verified\nPASS case-0005: cache, retry"
   }
 }

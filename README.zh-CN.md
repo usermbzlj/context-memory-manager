@@ -37,12 +37,19 @@ node .\dist\src\cli.js setup opencode --workspace "D:\MyProject" --dry-run
 node .\dist\src\cli.js setup opencode --workspace "D:\MyProject"
 ```
 
+setup 会根据 `opencode --version` 选择插件接口。OpenCode 2.x 可以一次安装到用户配置，所有项目生效，归档仍按项目隔离：
+
+```powershell
+cmm setup opencode --global --dry-run
+cmm setup opencode --global
+```
+
 先预览，再写入配置。安装后重启 Agent，按宿主要求确认权限。不要移动安装目录；移动后需重新 setup。
 
 
 | 平台 | 默认行为 | 边界 |
 | --- | --- | --- |
-| OpenCode | 归档、首次保留、压力触发历史投影 | 使用实验性接口 |
+| OpenCode 1.x / 2.x | 归档、首次保留、压力触发历史投影 | 1.x 用实验性接口，2.x 用 `context` Hook |
 | Claude Code | 归档与 MCP 找回 | 入口 Bash 压缩需显式开启 |
 | Codex | 原生归档与 MCP 找回 | 不声称原生历史改写 |
 | Kimi Code 2.x | 用户级 Hook 按工作区归档，MCP 找回 | Kimi 只传前 2,000 个 UTF-16 单元，达到上限的结果标为 partial；不改写 |
@@ -66,6 +73,6 @@ node .\dist\src\cli.js setup opencode --workspace "D:\MyProject"
 
 升级前停止 Agent，备份整个存储目录，包括数据库侧文件和 blobs。本版迁移到 schema v4，旧可执行程序不能再写入。使用 `verify` 校验、`reindex` 重建旧数据索引。旧投影标记不会被自动当成可信凭据。
 
-2026-10-10 Windows 全套结果：310 项：309 通过、0 失败、1 项 Windows 文件符号链接跳过（同一构建在 Node 22.16.0 上 308 通过、2 项跳过）。远程 CI [38039102635](https://github.com/usermbzlj/context-memory-manager/actions/runs/38039102635) 在 Ubuntu/Windows/macOS × Node 22.16.0/22/24/26 共 12 个任务连续 4 次全部通过，此前的失败已修复，见验证记录；本地 RC，未发布到 npm，包含原版回归、真实旧结构迁移、字节损坏、面板 HTTP/worker 测试和实际 CLI 子进程；数字与边界见 [验证记录](docs/RELEASE_VALIDATION.md)。离线安装包与 PowerShell 5.1/7 的 `scripts/windows-smoke.ps1` 均实际执行生成的 Codex Hook，完成原文召回和哈希校验。旧 Windows 接入须重新运行 `setup codex`，再在 Codex 审阅并信任变更后的命令。已安装的 Kimi Code 2.1.1 在隔离目录中配合本地脚本化模型实测通过（Hook 归档、2,000 字符截断标 partial、MCP 找回、卸载还原）。已安装的 Codex 0.162.0-alpha.2 能读取本项目配置并发现 5 个 MCP 工具；捕获 hook 仍需用户信任，原生捕获闭环尚待验收。**真实模型下的 Kimi、Claude、Codex、OpenCode/Bun、RTK 实际二进制、真实任务质量/账单对照、原生/远程评分的真实模型质量，以及用户对面板的浏览器验收仍未完成。**
+2026-10-10 Windows 全套结果：321 项：320 通过、0 失败、1 项 Windows 文件符号链接跳过（同一构建在 Node 22.16.0 上 319 通过、2 项跳过）。远程 CI [38039102635](https://github.com/usermbzlj/context-memory-manager/actions/runs/38039102635) 在 Ubuntu/Windows/macOS × Node 22.16.0/22/24/26 共 12 个任务连续 4 次全部通过，此前的失败已修复，见验证记录；本地 RC，未发布到 npm，包含原版回归、真实旧结构迁移、字节损坏、面板 HTTP/worker 测试和实际 CLI 子进程；数字与边界见 [验证记录](docs/RELEASE_VALIDATION.md)。离线安装包与 PowerShell 5.1/7 的 `scripts/windows-smoke.ps1` 均实际执行生成的 Codex Hook，完成原文召回和哈希校验。旧 Windows 接入须重新运行 `setup codex`，再在 Codex 审阅并信任变更后的命令。已安装的 Kimi Code 2.1.1 在隔离目录中配合本地脚本化模型实测通过（Hook 归档、2,000 字符截断标 partial、MCP 找回、卸载还原）。已安装的 Codex 0.162.0-alpha.2 能读取本项目配置并发现 5 个 MCP 工具；捕获 hook 仍需用户信任，原生捕获闭环尚待验收。已安装的 OpenCode 2.0.26 以全局插件加载，在免费模型的两次合成会话中完成归档、直接调用召回工具、出站请求内的历史投影（持久化会话不变）和投影后的精确找回。**真实模型下的 Kimi、Claude、Codex、OpenCode 1.x、RTK 实际二进制、真实任务质量/账单对照、原生/远程评分的真实模型质量，以及用户对面板的浏览器验收仍未完成。**
 
 归档是本地明文，可能含源码和密钥，不要提交到 GitHub。默认不自动删除原文。演示的 **95.51%** 只是合成日志的字符缩减，不是任务费用或质量证明。

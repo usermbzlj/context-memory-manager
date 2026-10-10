@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { loadConfig, updateConfig, defaultStoragePath, redactConfig } from './config.js';
 import { errorMessage, object, terminalSafe } from './util/validation.js';
-import { planSetup, planUninstall, applySetup, MissingHostConfig, type AgentTarget, type FileChange } from './integrations/setup.js';
+import { planSetup, planUninstall, applySetup, detectOpenCodeApi, MissingHostConfig, type AgentTarget, type FileChange } from './integrations/setup.js';
 import type { ContextManager as Manager } from './core/context-manager.js';
 
 import { VERSION } from './version.js';
@@ -65,6 +65,8 @@ Options:
   --out PATH                  Exact UTF-8 export; fails if the file exists
   --used-tokens N              Optional current usage for tidy
   --context-window N           Optional context window for tidy
+  --opencode-api 1|2           OpenCode plugin API for setup (default: installed opencode --version, else 1)
+  --global                    OpenCode 2.x: install in the user config; archives stay per project
   --managed-by-cmm            Marker written into generated setup commands; no effect when typed by hand
   --dry-run --json --help --version
 
@@ -82,6 +84,7 @@ const options={
   'used-tokens':{type:'string'},'context-window':{type:'string'},
   json:{type:'boolean'},shared:{type:'boolean'},restore:{type:'boolean'},'dry-run':{type:'boolean'},
   yes:{type:'boolean'},'managed-by-cmm':{type:'boolean'},help:{type:'boolean',short:'h'},version:{type:'boolean',short:'v'},
+  global:{type:'boolean'},'opencode-api':{type:'string'},
 } as const;
 type Flags=ReturnType<typeof argumentsFor>['values'];
 function argumentsFor(argv:string[]) {
@@ -96,6 +99,18 @@ function numeric(value:string|undefined,fallback:number):number {
 }
 function emit(value:unknown) {process.stdout.write(JSON.stringify(value,null,2)+'\n');}
 function required(value:string|undefined,name:string):string {if(!value)throw new Error(`${name} is required; run cmm --help`);return value;}
+/** An explicit --opencode-api wins; --global implies 2.x; otherwise ask the installed CLI, defaulting to 1.x. */
+async function openCodeApi(flags:Flags):Promise<{api:1|2;source:'flag'|'global'|'detected'|'default'}> {
+  const value=flags['opencode-api'];
+  if(value!==undefined) {
+    if(value!=='1' && value!=='2')throw new Error('--opencode-api must be 1 or 2');
+    if(flags.global && value==='1')throw new Error('--global needs the OpenCode 2.x plugin API');
+    return {api:Number(value) as 1|2,source:'flag'};
+  }
+  if(flags.global)return {api:2,source:'global'};
+  const detected=await detectOpenCodeApi();
+  return detected ? {api:detected,source:'detected'} : {api:1,source:'default'};
+}
 function agentTarget(value:string|undefined):AgentTarget {
   if(!value || !['claude','codex','kimi','opencode'].includes(value))throw new Error('Agent must be claude, codex, kimi or opencode');
   return value as AgentTarget;
@@ -150,12 +165,15 @@ export async function main(argv=process.argv.slice(2)):Promise<void> {
   if(passthrough.length && cmd!=='proxy')throw new Error('Arguments after -- are only accepted for proxy');
   if(cmd==='setup' || cmd==='uninstall') {
     const all=rest[0]==='all',targets=all?['claude','codex','kimi','opencode'] as const:[agentTarget(rest[0])];
+    if(flags.global && (all || targets[0]!=='opencode'))throw new Error('--global applies only to cmm setup/uninstall opencode');
+    const opencode=cmd==='setup' && targets.includes('opencode') ? await openCodeApi(flags) : undefined;
     const changes:FileChange[]=[],skipped:{agent:AgentTarget;reason:string}[]=[];
     for(const agent of targets) {
-      try {changes.push(...(cmd==='setup'?planSetup:planUninstall)({agent,workspace,storage,cli}));}
+      try {changes.push(...(cmd==='setup'?planSetup:planUninstall)({agent,workspace,storage,cli,global:flags.global,opencodeApi:opencode?.api}));}
       catch(error) {if(!all || !(error instanceof MissingHostConfig))throw error;skipped.push({agent,reason:error.message});}
     }
-    const extra=skipped.length?{skipped}:{};
+    const extra={...(skipped.length?{skipped}:{}),...(opencode?{opencode:{pluginApi:opencode.api,source:opencode.source,
+      scope:flags.global?'user config; archives stay per project':'this workspace'}}:{})};
     if(flags['dry-run'])emit({dryRun:true,writes:changes.filter(c=>c.before!==c.after).map(c=>({file:c.file,reason:c.reason,backup:c.before!==null})),...extra,note:'No files written. Existing secrets are not printed.'});
     else emit({...applySetup(changes),...extra,next:cmd==='uninstall'?'Restart the agent. Archives are untouched.':'Restart the agent and approve trusted hooks/MCP if asked. Re-run setup after moving CMM.'});
     return;
@@ -282,7 +300,9 @@ export async function main(argv=process.argv.slice(2)):Promise<void> {
       case 'gc': emit({scope:'entire storage',...(await manager.gc()),freedBytesMeaning:'Logical event payload bytes, not deduplicated physical disk reclamation'});break;
       case 'doctor': {
         const check=await service.verify();
-        const installation=planSetup({agent:agentTarget(flags.agent ?? 'opencode'),workspace,storage,cli}).map(c=>({file:c.file,installed:c.before===c.after,exists:c.before!==null}));
+        const target=agentTarget(flags.agent ?? 'opencode');
+        const opencodeApi=target==='opencode' ? (await openCodeApi(flags)).api : undefined;
+        const installation=planSetup({agent:target,workspace,storage,cli,global:flags.global,opencodeApi}).map(c=>({file:c.file,installed:c.before===c.after,exists:c.before!==null}));
         emit({ok:check.failed===0,node:process.version,platform:process.platform,storage,sqlite:manager.db.queryOne('SELECT sqlite_version() AS version'),archive:check,installation,status:service.status(),limits:['This diagnoses local files and capture observations, not a live end-to-end agent certification.','MCP-only setup does not observe native tools.','Unknown result shapes, unarchived outputs and protected events stay unchanged.']});
         if(check.failed)process.exitCode=1;break;
       }
