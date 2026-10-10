@@ -10,12 +10,15 @@ import { indexCoverage } from '../evidence/index.js';
 import { searchEvidence } from '../evidence/search.js';
 import { integer, text } from '../util/validation.js';
 import { safeEnd } from '../util/text.js';
+import { validateProjectionReceipt, type ProjectionReceipt } from '../runtime/projection-receipt.js';
 import { publicSettings, readSettings, saveSettings } from './settings.js';
 import type { CapsuleRow, ToolEventRow } from '../types.js';
 
 interface Scope {id:string;agent:string;workspaceId:string;path:string;createdAt:number}
 type Row = Record<string, any>;
-const eventColumns = 'e.id,e.agent,e.workspace_id,e.session_id,e.tool_call_id,e.tool_name,e.status,e.turn,e.created_at,e.archived_at,e.input_sha,e.input_bytes,e.result_sha,e.result_bytes,e.chain_id,e.capsule_id,e.pinned,e.persistent_pin,e.state,e.safe_to_evict,e.protected_until_turn,e.recalled_count,e.last_recalled_at,e.descriptor_json';
+const eventColumns = 'e.id,e.agent,e.workspace_id,e.session_id,e.tool_call_id,e.tool_name,e.status,e.turn,e.created_at,e.archived_at,e.input_sha,e.input_bytes,e.result_sha,e.result_bytes,e.chain_id,e.capsule_id,e.pinned,e.persistent_pin,e.state,e.safe_to_evict,e.protected_until_turn,e.recalled_count,e.last_recalled_at,e.descriptor_json,(SELECT COUNT(*) FROM projections p WHERE p.event_id=e.id) AS projection_count';
+const roleNames = ['retention','capsule','chain'] as const;
+const loopback = (url:string|undefined) => { try { return !!url && ['localhost','127.0.0.1','[::1]'].includes(new URL(url).hostname); } catch { return false; } };
 /** Known, safe failure kinds. Everything else reaches the browser as a generic failure. */
 export class ManagementError extends Error {
   constructor(readonly status:number,readonly code:string,message:string) { super(message); this.name='ManagementError'; }
@@ -26,7 +29,7 @@ const publicMessages:Record<string,string> = {
   MAINTENANCE_RUNNING:'已有维护任务正在执行。',SIZE_LIMIT:'原文超过 32 MiB 下载上限；请改用分页浏览或 context_recall。',
   INVALID_CURSOR:'分页游标无效或已过期，请重新加载列表。',WORKER_CLOSING:'管理进程正在关闭。',
 };
-const validationMessage = /^[\w.]+ (?:must be (?:an object|a string|a nonempty string of at most \d+ characters \(no NUL\)|an integer in \[-?\d+, \d+\])|contains an unpaired Unicode surrogate)$|^(?:offset exceeds totalChars=\d+|offset splits a Unicode character; use the previous page nextOffset|find must be 1\.\.1000 characters|pinned must be boolean|reindex must be boolean|Invalid (?:content field|filter|pinned filter|completeness|status|role|list kind|provider role))$/;
+const validationMessage = /^[\w.]+ (?:must be (?:an object|a string|a nonempty string of at most \d+ characters \(no NUL\)|an integer in \[-?\d+, \d+\])|contains an unpaired Unicode surrogate)$|^(?:offset exceeds totalChars=\d+|offset splits a Unicode character; use the previous page nextOffset|find must be 1\.\.1000 characters|pinned must be boolean|reindex must be boolean|Invalid (?:content field|filter|pinned filter|projected filter|completeness|status|role|list kind|provider role|projection mode))$/;
 const notFoundMessage = /^(?:Event not available in this agent\/workspace scope|event not found|no archived event)/;
 const unsafeSettingsMessage = /lock|Cannot read|could not be removed|Settings were saved|[A-Za-z]:[\\/]|\/\w+\//i;
 /** Maps an internal error to a status, code and message that may cross the browser boundary. */
@@ -73,7 +76,7 @@ export class ManagementService {
       input:{sha256:row.input_sha,bytes:row.input_bytes},result:{sha256:row.result_sha,bytes:row.result_bytes},bytes:row.result_bytes,
       chainId:row.chain_id,capsuleId:row.capsule_id,pinned:Boolean(row.pinned),persistentPin:Boolean(row.persistent_pin),state:row.state,
       safeToEvict:row.safe_to_evict,protectedUntilTurn:row.protected_until_turn,recalledCount:row.recalled_count,lastRecalledAt:row.last_recalled_at,
-      provenance:provenanceFor(this.manager.db,row.id),coverage:indexCoverage(this.manager.db,row.id)};
+      provenance:provenanceFor(this.manager.db,row.id),coverage:indexCoverage(this.manager.db,row.id),projectionCount:row.projection_count ?? 0};
   }
   private cursor(payload:Row):string { const body = Buffer.from(JSON.stringify(payload)).toString('base64url'); return body+'.'+createHmac('sha256',cursorKey).update(body).digest('base64url'); }
   private readCursor(value:unknown,binding:string):Row|undefined {
@@ -100,6 +103,7 @@ export class ManagementService {
       }
     }
     if (method === 'testProvider') return this.testProvider(p);
+    if (method === 'modelUsage') return this.modelUsage(p.scopeId === undefined ? undefined : this.scope(p.scopeId));
     if (method === 'list' && p.kind === 'providers') {
       if (p.scopeId) this.scope(p.scopeId);
       return this.list({id:'storage-global',agent:'',workspaceId:'',path:'',createdAt:0},p);
@@ -110,6 +114,7 @@ export class ManagementService {
       case 'overview': return this.overview(scope);
       case 'list': return this.list(scope,p);
       case 'detail': return this.detail(scope,p.eventId);
+      case 'projection': return this.projection(scope,p);
       case 'chain': return this.chain(scope,p.chainId);
       case 'capsule': return this.capsule(scope,p.capsuleId);
       case 'content': {
@@ -176,7 +181,10 @@ export class ManagementService {
     const states = Object.fromEntries(this.manager.db.queryAll<Row>('SELECT state,COUNT(*) AS count FROM tool_events WHERE agent=? AND workspace_id=? GROUP BY state',params).map(r => [r.state,r.count]));
     const batches = this.manager.db.queryOne<Row>(`SELECT COALESCE(SUM(b.batches),0) AS count,MAX(b.updated_at) AS lastUpdatedAt FROM history_batches b JOIN sessions s ON s.id=b.session_id WHERE s.agent=? AND s.workspace_id=?`,params);
     const receipts = this.manager.db.queryOne<Row>('SELECT COUNT(*) AS count FROM projection_cache p JOIN tool_events e ON e.id=p.event_id WHERE e.agent=? AND e.workspace_id=?',params);
-    return {scope:s,archive,states:{hot:0,capsule:0,evicted:0,...states},health:this.health(s),indexCoverage:this.coverage(s),historyBatches:batches,projectionReceipts:receipts,
+    const compression = this.manager.db.queryOne<Row>(`SELECT COUNT(DISTINCT p.event_id) AS events,COUNT(DISTINCT p.session_id) AS sessions,
+      COALESCE(SUM(p.original_chars),0) AS originalChars,COALESCE(SUM(p.visible_chars),0) AS visibleChars,MAX(p.created_at) AS lastAt
+      FROM projections p JOIN tool_events e ON e.id=p.event_id WHERE e.agent=? AND e.workspace_id=?`,params);
+    return {scope:s,archive,states:{hot:0,capsule:0,evicted:0,...states},health:this.health(s),indexCoverage:this.coverage(s),historyBatches:batches,projectionReceipts:receipts,compression,
       updatedAt:Date.now(),stateMeaning:'desired retention view',bytesMeaning:'logical captured UTF-8 bytes',receiptsMeaning:'views returned; model consumption and billing unknown',providerCallsScope:'storage-global',cost:'unpriced'};
   }
   private async detail(s:Scope,id:unknown) {
@@ -187,7 +195,44 @@ export class ManagementService {
       pins:this.manager.db.queryAll('SELECT target_type AS targetType,persistent,created_at AS createdAt FROM pins WHERE target_type=? AND target_id=?',['event',row.id]),
       relatedEvidence:this.memory(s).related(row.id),
       projections:this.manager.db.queryAll('SELECT mode,representation,created_at AS createdAt,source_sha AS sourceSha256,visible_sha AS visibleSha256 FROM projection_cache WHERE event_id=? ORDER BY created_at DESC LIMIT 100',[row.id])
-        .map((p:any)=>({...p,integrity:'not-checked'}))};
+        .map((p:any)=>({...p,integrity:'not-checked'})),
+      compressions:this.manager.db.queryAll('SELECT session_id AS sessionId,mode,original_chars AS originalChars,visible_chars AS visibleChars,created_at AS createdAt FROM projections WHERE event_id=? ORDER BY created_at DESC LIMIT 100',[row.id])};
+  }
+  /** One compression: the exact view returned to the host next to the counts, with the receipt re-verified against the archive. */
+  private async projection(s:Scope,p:Record<string,unknown>) {
+    const row = this.event(s,p.eventId);
+    const sessionId = text(p.sessionId,'sessionId',200), mode = text(p.mode,'mode',20);
+    if (!['history','ingress'].includes(mode)) throw new Error('Invalid projection mode');
+    const record = this.manager.db.queryOne<Row>('SELECT original_chars AS originalChars,visible_chars AS visibleChars,created_at AS createdAt FROM projections WHERE event_id=? AND session_id=? AND mode=?',[row.id,sessionId,mode]);
+    if (!record) throw new ManagementError(404,'NOT_FOUND','Projection unavailable in scope');
+    const receipts = this.manager.db.queryAll<ProjectionReceipt & {created_at:number}>('SELECT event_id,session_id,mode,representation,source_sha,visible_sha,text,created_at FROM projection_cache WHERE event_id=? AND session_id=? AND mode=? ORDER BY representation',[row.id,sessionId,mode]);
+    let source:string|undefined;
+    if (receipts.length && row.result_bytes <= downloadLimit) { try { source = (await this.manager.archive.fetchOriginal(row.id)).result; } catch { source = undefined; } }
+    const views = receipts.map(receipt => {
+      let integrity = 'not-checked';
+      if (source !== undefined) { try { validateProjectionReceipt(this.manager.db,row,receipt,source); integrity = 'verified'; } catch { integrity = 'mismatch'; } }
+      const shown = receipt.text.length > 64000 ? receipt.text.slice(0,safeEnd(receipt.text,64000)) : receipt.text;
+      return {representation:receipt.representation,createdAt:receipt.created_at,visibleChars:receipt.text.length,text:shown,complete:shown.length === receipt.text.length,integrity};
+    });
+    return {eventId:row.id,sessionId,mode,tool:row.tool_name,status:row.status,summary:inputSummary(row.descriptor_json),...record,views,
+      meaning:'The host request carried this view instead of the archived result; the archive and the host session keep the full original.'};
+  }
+  /** Configured model roles and what actually ran. Calls are storage-global; scores are scoped. */
+  private modelUsage(s:Scope|undefined) {
+    const cfg = this.manager.config;
+    const effectiveScorer = cfg.retention.scorer === 'conservative' || !cfg.providers.retention.length ? 'conservative-fallback' : cfg.retention.scorer;
+    const roles = roleNames.map(role => {
+      const calls = this.manager.db.queryOne<Row>(`SELECT COUNT(*) AS total,COALESCE(SUM(ok),0) AS ok,COALESCE(SUM(tokens_in),0) AS tokensIn,COALESCE(SUM(tokens_out),0) AS tokensOut,MAX(created_at) AS lastAt FROM provider_calls WHERE purpose=?`,[role])!;
+      const last = this.manager.db.queryOne<Row>('SELECT provider,model,ok,created_at AS createdAt FROM provider_calls WHERE purpose=? ORDER BY id DESC LIMIT 1',[role]);
+      return {role,configured:cfg.providers[role].map(c => ({name:c.name,model:c.model,kind:c.kind,location:loopback(c.baseUrl) ? 'local' : 'remote'})),
+        calls:{total:calls.total,ok:calls.ok,failed:calls.total-calls.ok,tokensIn:calls.tokensIn,tokensOut:calls.tokensOut,lastAt:calls.lastAt},
+        last:last ? {provider:last.provider,model:last.model,ok:Boolean(last.ok),createdAt:last.createdAt} : null};
+    });
+    const scores = s ? this.manager.db.queryAll<Row>(`SELECT r.scorer,COUNT(*) AS count,MAX(r.created_at) AS lastAt FROM retention_scores r JOIN tool_events e ON e.id=r.event_id
+      WHERE e.agent=? AND e.workspace_id=? GROUP BY r.scorer ORDER BY count DESC`,[s.agent,s.workspaceId]) : [];
+    return {retentionScorer:{configured:cfg.retention.scorer,effective:effectiveScorer},roles,scopeScores:scores,
+      callsScope:'storage-global',scoresScope:s ? 'selected scope' : 'none',cost:'unpriced',
+      reloadNote:'Hosts read the configuration when they start; restart a host after changing models.'};
   }
   private chain(s:Scope,id:unknown) {
     const chain = this.manager.db.queryOne<Row>('SELECT id,session_id AS sessionId,status,capsule_id AS capsuleId,created_at AS createdAt,updated_at AS updatedAt FROM chains WHERE id=? AND agent=? AND workspace_id=?',[text(id,'chainId',200),s.agent,s.workspaceId]);
@@ -211,7 +256,7 @@ export class ManagementService {
   private list(s:Scope,p:Record<string,unknown>) {
     const kind = text(p.kind,'kind',20), limit = integer(p.limit ?? 50,'limit',1,p.query ? 50 : 100);
     const filters:Row = {};
-    for (const key of ['query','sessionId','tool','status','state','pinned','completeness','role','provider']) if (p[key] !== undefined) filters[key] = p[key];
+    for (const key of ['query','sessionId','tool','status','state','pinned','completeness','projected','role','provider']) if (p[key] !== undefined) filters[key] = p[key];
     if (p.sessionId !== undefined && !this.manager.db.queryOne('SELECT id FROM sessions WHERE id=? AND agent=? AND workspace_id=?',[text(p.sessionId,'sessionId',200),s.agent,s.workspaceId])) throw new ManagementError(404,'NOT_FOUND','Session unavailable in scope');
     const binding = createHash('sha256').update(JSON.stringify({scope:s.id,kind,limit,filters})).digest('hex');
     const cursor = this.readCursor(p.cursor,binding);
@@ -222,14 +267,26 @@ export class ManagementService {
         const value = text(p[key],key,200); if (allowed && !(allowed as readonly string[]).includes(value)) throw new Error('Invalid filter'); sql += ` AND e.${column}=?`; params.push(value);
       }
       if (p.pinned !== undefined) {if (typeof p.pinned !== 'boolean') throw new Error('Invalid pinned filter'); sql+=' AND e.pinned=?';params.push(p.pinned ? 1 : 0);}
+      if (p.projected !== undefined) {if (typeof p.projected !== 'boolean') throw new Error('Invalid projected filter'); sql+=` AND ${p.projected ? '' : 'NOT '}EXISTS(SELECT 1 FROM projections p WHERE p.event_id=e.id)`;}
       if (p.completeness !== undefined) { const v=text(p.completeness,'completeness',20);if(!['unknown','complete','partial'].includes(v))throw new Error('Invalid completeness');sql+=" AND COALESCE((SELECT json_extract(pr.json,'$.completeness') FROM evidence_provenance pr WHERE pr.event_id=e.id),'unknown')=?";params.push(v);}
       if (p.query) { text(p.query,'query',1000);
         return this.searchList(s,p,sql,params,binding,cursor,limit);
       }
     } else if (kind === 'sessions') {
       sql=`SELECT id,agent,workspace_id AS workspaceId,current_turn AS currentTurn,created_at AS createdAt,last_active AS lastActive,
-        (SELECT COUNT(*) FROM tool_events e WHERE e.session_id=sessions.id AND e.agent=sessions.agent AND e.workspace_id=sessions.workspace_id) AS eventCount
+        (SELECT COUNT(*) FROM tool_events e WHERE e.session_id=sessions.id AND e.agent=sessions.agent AND e.workspace_id=sessions.workspace_id) AS eventCount,
+        (SELECT COUNT(DISTINCT p.event_id) FROM projections p WHERE p.session_id=sessions.id) AS projectedEvents,
+        (SELECT COALESCE(SUM(p.original_chars),0) FROM projections p WHERE p.session_id=sessions.id) AS originalChars,
+        (SELECT COALESCE(SUM(p.visible_chars),0) FROM projections p WHERE p.session_id=sessions.id) AS visibleChars,
+        (SELECT b.batches FROM history_batches b WHERE b.session_id=sessions.id) AS historyBatches
         FROM sessions WHERE agent=? AND workspace_id=?`;
+    } else if (kind === 'projections') {
+      sql=`SELECT p.event_id||'|'||p.session_id||'|'||p.mode AS id,p.event_id AS eventId,p.session_id AS sessionId,p.mode,p.original_chars AS originalChars,
+        p.visible_chars AS visibleChars,p.created_at AS createdAt,e.tool_name AS tool,e.status,e.turn,e.descriptor_json
+        FROM projections p JOIN tool_events e ON e.id=p.event_id JOIN sessions s ON s.id=p.session_id
+        WHERE e.agent=? AND e.workspace_id=? AND s.agent=e.agent AND s.workspace_id=e.workspace_id`;
+      time='p.created_at';id="(p.event_id||'|'||p.session_id||'|'||p.mode)";
+      if(p.sessionId !== undefined){sql+=' AND p.session_id=?';params.push(text(p.sessionId,'sessionId',200));}
     } else if (kind === 'chains') {
       sql=`SELECT id,session_id AS sessionId,status,capsule_id AS capsuleId,created_at AS createdAt,updated_at AS updatedAt,
         (SELECT COUNT(*) FROM chain_members m JOIN tool_events e ON e.id=m.event_id WHERE m.chain_id=chains.id AND e.agent=chains.agent AND e.workspace_id=chains.workspace_id AND e.session_id=chains.session_id) AS eventCount
@@ -247,12 +304,18 @@ export class ManagementService {
     } else throw new Error('Invalid list kind');
     if(cursor){sql+=` AND (${time}<? OR (${time}=? AND ${id}<?))`;params.push(cursor.time,cursor.time,kind==='providers' ? Number(cursor.id) : cursor.id);}
     const rows=this.manager.db.queryAll<Row>(`${sql} ORDER BY ${time} DESC,${id} DESC LIMIT ?`,[...params,limit+1]);
-    const items=rows.slice(0,limit).map(row=>kind==='events'?this.eventDto(row):kind==='capsules'?{...row,summary:String(row.summary).slice(0,1000),frozen:Boolean(row.frozen)}:row);const last=rows.slice(0,limit).at(-1);
+    const items=rows.slice(0,limit).map(row=>{
+      if(kind==='events')return this.eventDto(row);
+      if(kind==='capsules')return {...row,summary:String(row.summary).slice(0,1000),frozen:Boolean(row.frozen)};
+      if(kind==='projections'){const {descriptor_json,...rest}=row;return {...rest,summary:inputSummary(descriptor_json)};}
+      return row;
+    });const last=rows.slice(0,limit).at(-1);
     return {items,nextCursor:rows.length>limit && last ? this.cursor({binding,time:last.createdAt ?? last.created_at,id:String(last.id),expires:Date.now()+3600000}):null,...(kind==='providers'?{scope:'storage-global',cost:'unpriced',tokensMeaning:'recorded token fields; missing usage may be zero'}:{})};
   }
   private searchList(s:Scope,p:Record<string,unknown>,sql:string,params:(string|number)[],binding:string,cursor:Row|undefined,limit:number) {
     // SearchEvidence performs bounded chunk search with the exact browsing predicates and does not touch recall protection.
-    const where=sql.slice(sql.indexOf(' WHERE ')+7);
+    const from=' FROM tool_events e WHERE ';
+    const where=sql.slice(sql.indexOf(from)+from.length);
     const result=searchEvidence(this.manager.db,{sql:where,params:params as string[]},String(p.query),limit,undefined,cursor?.searchCursor);
     const last=result.results.at(-1);
     return {items:result.results.map(r=>({id:r.eventId,...r})),nextCursor:result.nextCursor && last ? this.cursor({binding,time:last.createdAt,id:last.eventId,searchCursor:result.nextCursor,expires:Date.now()+3600000}):null,notice:result.notice};

@@ -183,6 +183,60 @@ test('a save whose writer lock cannot be removed is reported as saved with a sta
   assert.equal(loadConfig(dir).strategy,'aggressive');
 });
 
+test('compression records show which sessions were compressed and the verified view next to the original',async t=>{
+  const {manager,memory,service,scopeId}=await fixture(t);
+  const raw='start\n'+'unchanging evidence\n'.repeat(5000)+'tail\n';
+  const id=(await memory.capture({sessionId:'s',toolCallId:'big',toolName:'Read',input:'artifacts/log.txt',result:raw})).eventId!;
+  manager.db.updateToolEvent(id,{state:'capsule'});
+  const result=await memory.transform('s',[{eventId:id,output:raw}],{usedTokens:9000,contextWindow:10000});
+  const shown=result.projections.find(p=>p.eventId===id && p.replaced)!;assert.ok(shown);
+  const sessions=await service.execute('list',{scopeId,kind:'sessions'}) as any;
+  const session=sessions.items.find((s:any)=>s.id===manager.db.getToolEvent(id)!.session_id);
+  assert.equal(session.projectedEvents,1);assert.equal(session.originalChars,raw.length);assert.equal(session.visibleChars,shown.text.length);assert.equal(session.historyBatches,1);
+  const list=await service.execute('list',{scopeId,kind:'projections'}) as any;
+  assert.equal(list.items.length,1);assert.equal(list.items[0].eventId,id);assert.equal(list.items[0].mode,'history');
+  assert.equal(typeof list.items[0].summary,'string');assert.equal('descriptor_json' in list.items[0],false);
+  await assert.rejects(service.execute('list',{scopeId,kind:'projections',sessionId:'other'}),/Session unavailable/);
+  assert.equal((await service.execute('list',{scopeId,kind:'projections',sessionId:session.id}) as any).items.length,1);
+  assert.deepEqual((await service.execute('list',{scopeId,kind:'events',projected:true}) as any).items.map((e:any)=>e.id),[id]);
+  assert.equal((await service.execute('list',{scopeId,kind:'events',projected:false}) as any).items.some((e:any)=>e.id===id),false);
+  assert.equal((await service.execute('list',{scopeId,kind:'events',query:'unchanging',projected:true}) as any).items[0].eventId,id);
+  await assert.rejects(service.execute('list',{scopeId,kind:'events',projected:'yes'}));
+  const params={scopeId,eventId:id,sessionId:session.id,mode:'history'};
+  const view=await service.execute('projection',params) as any;
+  assert.equal(view.originalChars,raw.length);assert.equal(view.views.length,1);
+  assert.equal(view.views[0].text,shown.text);assert.equal(view.views[0].integrity,'verified');assert.equal(view.views[0].complete,true);
+  assert.equal((await service.execute('detail',{scopeId,eventId:id}) as any).compressions.length,1);
+  const overview=await service.execute('overview',{scopeId}) as any;
+  assert.deepEqual([overview.compression.events,overview.compression.sessions,overview.compression.originalChars],[1,1,raw.length]);
+  manager.db.run("UPDATE projection_cache SET text='tampered' WHERE event_id=?",[id]);
+  assert.equal((await service.execute('projection',params) as any).views[0].integrity,'mismatch');
+  await assert.rejects(service.execute('projection',{...params,mode:'other'}),/Invalid projection mode/);
+  await assert.rejects(service.execute('projection',{...params,sessionId:'other'}),/Projection unavailable/);
+  const foreign=new MemoryService(manager,{agent:'other',workspaceId:'elsewhere'});
+  await foreign.capture({sessionId:'s',toolCallId:'f',toolName:'Read',input:'x',result:'y'});
+  const foreignScope=(await service.execute('scopes',{}) as any).scopes.find((s:any)=>s.agent==='other').id;
+  await assert.rejects(service.execute('projection',{...params,scopeId:foreignScope}));
+  assert.equal((await service.execute('list',{scopeId:foreignScope,kind:'projections'}) as any).items.length,0);
+});
+
+test('model usage reports configured roles, real calls and which scorer produced the scope scores',async t=>{
+  const {manager,service,scopeId,id}=await fixture(t);
+  let usage=await service.execute('modelUsage',{scopeId}) as any;
+  assert.equal(usage.retentionScorer.effective,'conservative-fallback');
+  assert.deepEqual(usage.roles.map((r:any)=>[r.role,r.configured.length,r.calls.total,r.last]),[['retention',0,0,null],['capsule',0,0,null],['chain',0,0,null]]);
+  manager.db.insertProviderCall({provider:'remote',model:'m',purpose:'chain',tokensIn:10,tokensOut:2,costUsd:0,ok:true});
+  manager.db.insertProviderCall({provider:'remote',model:'m',purpose:'chain',tokensIn:0,tokensOut:0,costUsd:0,ok:false,error:'PRIVATE_PROVIDER_BODY'});
+  manager.db.insertRetentionScore(id,'conservative-fallback',0.35,1);
+  usage=await service.execute('modelUsage',{scopeId}) as any;
+  const chain=usage.roles.find((r:any)=>r.role==='chain');
+  assert.deepEqual([chain.calls.total,chain.calls.ok,chain.calls.failed,chain.calls.tokensIn,chain.last.ok],[2,1,1,10,false]);
+  assert.deepEqual(usage.scopeScores.map((s:any)=>[s.scorer,s.count]),[['conservative-fallback',1]]);
+  assert.equal(JSON.stringify(usage).includes('PRIVATE_PROVIDER_BODY'),false);
+  assert.deepEqual((await service.execute('modelUsage',{}) as any).scopeScores,[]);
+  await assert.rejects(service.execute('modelUsage',{scopeId:'forged'}));
+});
+
 test('event rows carry the input summary shown by search, and the shareable diagnostics omit the workspace path',async t=>{
   const {dir,service,scopeId}=await fixture(t);
   const list=await service.execute('list',{scopeId,kind:'events'}) as any;

@@ -193,7 +193,7 @@ npm test
 npm run test:pack
 ```
 
-2026-10-10 Windows full suite: 321 tests, 320 pass, 0 fail, 1 Windows file-symlink skip; the same build also passes on Node 22.16.0 (319 pass, 2 skips). It includes original regressions, actual
+2026-10-10 Windows full suite: 323 tests, 322 pass, 0 fail, 1 Windows file-symlink skip; the same build also passes on Node 22.16.0 (321 pass, 2 skips). It includes original regressions, actual
 v0.1/v0.2 schema fixtures, corruption checks, concurrent writers, independent protocol peers,
 RTK schema fixtures, dashboard HTTP/worker tests and real CLI subprocesses. Counts, commands and
 exact boundaries are in [the validation record](docs/RELEASE_VALIDATION.md). The distributable check installs the actual local

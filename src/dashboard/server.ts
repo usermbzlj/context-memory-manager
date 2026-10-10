@@ -13,7 +13,7 @@ type Data = Record<string, unknown>;
 // Worker close can wait for a queued operation (up to ~1.5 s of job wind-down plus the SQLite close), so SIGTERM must come late.
 const workerShutdown = {graceMs:5000,forceMs:8000,deadlineMs:12000};
 type PublicError = { code: string; status?: number; message: string };
-const methods = new Set(['scopes','overview','list','detail','chain','capsule','content','pin','settings',
+const methods = new Set(['scopes','overview','list','detail','projection','modelUsage','chain','capsule','content','pin','settings',
   'saveSettings','testProvider','diagnostics','runtime','startJob','jobs','cancelJob']);
 const assetsRoot = fileURLToPath(new URL('./assets/', import.meta.url));
 const token = () => randomBytes(32).toString('hex');

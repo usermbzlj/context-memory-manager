@@ -2,6 +2,20 @@
 
 ## 0.3.0-rc.2 dashboard, native scoring and hardening - 2026-10-10
 
+### Dashboard: compression and model visibility (2026-10-10)
+
+From user browser feedback: it was not possible to tell which sessions were compressed, see a
+compressed result next to its original, or tell whether the configured models were ever called.
+
+- New compression records page: per-scope totals, every recorded projection with its original
+  and visible character counts, and a side-by-side view of the archived original and the exact
+  view the host request carried. The receipt is re-verified against the archive before display.
+- Sessions show whether and how much each one was compressed; the evidence list has a
+  compressed filter and badge; the event detail has a before/after comparison tab.
+- A model status card (overview and models page) shows each role's configured models, local
+  health, recorded calls and last outcome, and which scorer produced the scope's retention scores.
+  A storage without a usable retention model is flagged as scoring with the built-in rules only.
+
 ### OpenCode 2.x (2026-10-10)
 
 - OpenCode 2.x rejects 1.x plugin files, so the generated plugin stopped loading. A new 2.x adapter
@@ -100,8 +114,8 @@ display defects, now fixed:
   loopback providers 1000 ms instead of 150 ms; a NaN deadline is treated as unbounded rather than 1 ms.
 
 Schema/source version unchanged; local RC, not published. Validation is recorded in
-`docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite after the OpenCode 2.x change: 321 tests, 320 pass, 0 fail, 1 Windows
-file-symlink skip (Node 24.19.0); the same build also passes on Node 22.16.0 (319 pass, 2 skips). Before it, remote CI run
+`docs/RELEASE_VALIDATION.md`; 2026-10-10 Windows full suite after the OpenCode 2.x change: 323 tests, 322 pass, 0 fail, 1 Windows
+file-symlink skip (Node 24.19.0); the same build also passes on Node 22.16.0 (321 pass, 2 skips). Before it, remote CI run
 38039102635 passed four times on Ubuntu, Windows and macOS with Node 22.16.0, 22, 24 and 26.
 
 ## 0.3.0-rc.2 Windows hook and evidence repairs - 2026-10-08

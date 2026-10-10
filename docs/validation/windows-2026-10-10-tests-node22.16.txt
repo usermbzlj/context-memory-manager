@@ -1,2140 +1,2152 @@
 TAP version 13
-# (node:46132) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:29440) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: archive failure 鈬?KEEP (never compact what was not archived)
     # Subtest: a failed archive records nothing and compacts nothing
     ok 1 - a failed archive records nothing and compacts nothing
       ---
-      duration_ms: 123.0541
+      duration_ms: 86.8116
       type: 'test'
       ...
     # Subtest: the manager keeps working after an archive failure
     ok 2 - the manager keeps working after an archive failure
       ---
-      duration_ms: 101.8941
+      duration_ms: 109.8046
       type: 'test'
       ...
     1..2
 ok 1 - archive failure 鈬?KEEP (never compact what was not archived)
   ---
-  duration_ms: 226.3308
+  duration_ms: 197.9757
   type: 'suite'
   ...
-# (node:10988) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:21392) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: jev batch scoring
     # Subtest: scores a batch with a single provider call
     ok 1 - scores a batch with a single provider call
       ---
-      duration_ms: 192.4562
+      duration_ms: 181.3741
       type: 'test'
       ...
     # Subtest: rejects a batch response with the wrong number of scores
     ok 2 - rejects a batch response with the wrong number of scores
       ---
-      duration_ms: 99.8373
+      duration_ms: 115.711
       type: 'test'
       ...
     # Subtest: batch failure routes every event to the fallback scorer
     ok 3 - batch failure routes every event to the fallback scorer
       ---
-      duration_ms: 261.5517
+      duration_ms: 276.8492
       type: 'test'
       ...
     # Subtest: scoreBatch with no providers throws (caller falls back)
     ok 4 - scoreBatch with no providers throws (caller falls back)
       ---
-      duration_ms: 78.9141
+      duration_ms: 111.1651
       type: 'test'
       ...
     1..4
 ok 2 - jev batch scoring
   ---
-  duration_ms: 634.344
+  duration_ms: 687.043
   type: 'suite'
   ...
-# (node:55452) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:77864) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: capsule failure 鈬?KEEP (never destroy history)
     # Subtest: a failed capsule build degrades the decision to keep
     ok 1 - a failed capsule build degrades the decision to keep
       ---
-      duration_ms: 199.4919
+      duration_ms: 192.9616
       type: 'test'
       ...
     1..1
 ok 3 - capsule failure 鈬?KEEP (never destroy history)
   ---
-  duration_ms: 200.9273
+  duration_ms: 194.1624
   type: 'suite'
   ...
-# (node:69608) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:50496) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: target session activity creates its own chain and never mutates the recalled source chain
 ok 4 - target session activity creates its own chain and never mutates the recalled source chain
   ---
-  duration_ms: 442.4279
+  duration_ms: 451.6069
   type: 'test'
   ...
 # Subtest: chain member writes reject foreign agent, workspace and source session
 ok 5 - chain member writes reject foreign agent, workspace and source session
   ---
-  duration_ms: 811.024
+  duration_ms: 585.9721
   type: 'test'
   ...
 # Subtest: target recall protection expires on its own turn counter regardless of source chain turns
 ok 6 - target recall protection expires on its own turn counter regardless of source chain turns
   ---
-  duration_ms: 452.7107
+  duration_ms: 579.693
   type: 'test'
   ...
 # Subtest: legacy mixed chain members do not affect source-chain readers or foreign-view protection
 ok 7 - legacy mixed chain members do not affect source-chain readers or foreign-view protection
   ---
-  duration_ms: 303.9722
+  duration_ms: 306.4765
   type: 'test'
   ...
 # Subtest: source-chain pins retain global and explicit session scopes on recalled evidence
 ok 8 - source-chain pins retain global and explicit session scopes on recalled evidence
   ---
-  duration_ms: 451.5347
+  duration_ms: 459.275
   type: 'test'
   ...
 # Subtest: global source-chain pin restores a cached target view and unpin reuses the same cached bytes
 ok 9 - global source-chain pin restores a cached target view and unpin reuses the same cached bytes
   ---
-  duration_ms: 500.9703
+  duration_ms: 494.5224
   type: 'test'
   ...
 # Subtest: an invalid legacy source-chain association cannot borrow its global pin
 ok 10 - an invalid legacy source-chain association cannot borrow its global pin
   ---
-  duration_ms: 391.7285
+  duration_ms: 395.3155
   type: 'test'
   ...
-# (node:73864) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:74184) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: chain linking across a fix cycle
     # Subtest: links the failure鈫抐ix鈫抪ass run into a completed chain with a frozen capsule
     ok 1 - links the failure鈫抐ix鈫抪ass run into a completed chain with a frozen capsule
       ---
-      duration_ms: 321.1249
+      duration_ms: 253.9825
       type: 'test'
       ...
     1..1
 ok 11 - chain linking across a fix cycle
   ---
-  duration_ms: 322.3747
+  duration_ms: 255.0312
   type: 'suite'
   ...
 # Subtest: child shutdown waits for stdio close, not exit, and escalates when TERM is ignored
 ok 12 - child shutdown waits for stdio close, not exit, and escalates when TERM is ignored
   ---
-  duration_ms: 77.9287
+  duration_ms: 86.8835
   type: 'test'
   ...
 # Subtest: an unconfirmed close reaches a deadline and leaves temporary files recoverable
 ok 13 - an unconfirmed close reaches a deadline and leaves temporary files recoverable
   ---
-  duration_ms: 125.3136
+  duration_ms: 120.9642
   type: 'test'
   ...
 # Subtest: shutdown releases an actual SQLite child before deleting its storage
 ok 14 - shutdown releases an actual SQLite child before deleting its storage
   ---
-  duration_ms: 840.3779
+  duration_ms: 831.7751
   type: 'test'
   ...
 # Subtest: a failed spawn still waits for close before declaring cleanup safe
 ok 15 - a failed spawn still waits for close before declaring cleanup safe
   ---
-  duration_ms: 4.6162
+  duration_ms: 3.8158
   type: 'test'
   ...
 # Subtest: configuration writers in independent processes reread under lock and preserve other fields
 ok 16 - configuration writers in independent processes reread under lock and preserve other fields
   ---
-  duration_ms: 1482.4118
+  duration_ms: 1505.1578
   type: 'test'
   ...
 # Subtest: a writer lock left by a dead process on this host is recovered and the save succeeds
 ok 17 - a writer lock left by a dead process on this host is recovered and the save succeeds
   ---
-  duration_ms: 173.785
+  duration_ms: 175.5611
   type: 'test'
   ...
 # Subtest: a writer lock held by a live process is refused with a message naming the lock, leaving config bytes unchanged
 ok 18 - a writer lock held by a live process is refused with a message naming the lock, leaving config bytes unchanged
   ---
-  duration_ms: 1611.4889
+  duration_ms: 1602.1422
   type: 'test'
   ...
 # Subtest: the writer lock is released after both success and failure
 ok 19 - the writer lock is released after both success and failure
   ---
-  duration_ms: 58.9636
+  duration_ms: 65.1284
   type: 'test'
   ...
 # Subtest: an invalid first patch on an absent configuration writes nothing
 ok 20 - an invalid first patch on an absent configuration writes nothing
   ---
-  duration_ms: 54.9509
+  duration_ms: 63.0865
   type: 'test'
   ...
 # Subtest: a configuration beginning with a UTF-8 byte order mark is readable and is not rewritten by reading
 ok 21 - a configuration beginning with a UTF-8 byte order mark is readable and is not rewritten by reading
   ---
-  duration_ms: 32.9235
+  duration_ms: 38.3316
   type: 'test'
   ...
 # Subtest: new settings require https for credentials unless the host is loopback; keyless providers may use http
 ok 22 - new settings require https for credentials unless the host is loopback; keyless providers may use http
   ---
-  duration_ms: 2.1766
+  duration_ms: 2.0366
   type: 'test'
   ...
 # Subtest: an existing cleartext credential configuration still loads, so hooks keep capturing
 ok 23 - an existing cleartext credential configuration still loads, so hooks keep capturing
   ---
-  duration_ms: 23.3535
+  duration_ms: 30.8007
   type: 'test'
   ...
 # Subtest: a legacy cleartext credential entry never blocks unrelated saves; only a new or changed entry is refused
 ok 24 - a legacy cleartext credential entry never blocks unrelated saves; only a new or changed entry is refused
   ---
-  duration_ms: 130.0063
+  duration_ms: 140.3261
   type: 'test'
   ...
 # Subtest: brand-new configuration files check every provider entry
 ok 25 - brand-new configuration files check every provider entry
   ---
-  duration_ms: 1.1035
+  duration_ms: 1.2845
   type: 'test'
   ...
 # Subtest: releasing the writer lock never removes a lock that another writer now owns
 ok 26 - releasing the writer lock never removes a lock that another writer now owns
   ---
-  duration_ms: 54.5108
+  duration_ms: 49.7055
   type: 'test'
   ...
 # Subtest: a guard file orphaned by a crashed reclaimer is cleaned up, while a fresh guard blocks reclaim
 ok 27 - a guard file orphaned by a crashed reclaimer is cleaned up, while a fresh guard blocks reclaim
   ---
-  duration_ms: 382.4978
+  duration_ms: 380.9847
   type: 'test'
   ...
 # Subtest: several writers reclaiming one dead holder each get the lock in turn and leave no lock or guard behind
 ok 28 - several writers reclaiming one dead holder each get the lock in turn and leave no lock or guard behind
   ---
-  duration_ms: 301.339
+  duration_ms: 416.3466
   type: 'test'
   ...
 # Subtest: CLI rejects configuration replacements that would prevent the next reopen, without changing bytes
 ok 29 - CLI rejects configuration replacements that would prevent the next reopen, without changing bytes
   ---
-  duration_ms: 3659.106
+  duration_ms: 2973.8908
   type: 'test'
   ...
 # Subtest: direct configuration saves reject incomplete or unknown nested fields before replacing a file
 ok 30 - direct configuration saves reject incomplete or unknown nested fields before replacing a file
   ---
-  duration_ms: 19.7727
+  duration_ms: 21.8763
   type: 'test'
   ...
 # Subtest: partial older disk configurations still receive defaults and unsafe or inherited keys remain refused
 ok 31 - partial older disk configurations still receive defaults and unsafe or inherited keys remain refused
   ---
-  duration_ms: 75.5605
+  duration_ms: 63.9866
   type: 'test'
   ...
-# (node:72748) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:29872) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: verify skips events retired by GC between rows but still reports real corruption
 ok 32 - verify skips events retired by GC between rows but still reports real corruption
   ---
-  duration_ms: 578.4942
+  duration_ms: 509.3944
   type: 'test'
   ...
 # Subtest: verify skips projection receipts of events retired while receipts are being checked
 ok 33 - verify skips projection receipts of events retired while receipts are being checked
   ---
-  duration_ms: 747.3363
+  duration_ms: 455.5169
   type: 'test'
   ...
 # Subtest: history batch commit rechecks provenance and publishes only still-eligible events
 ok 34 - history batch commit rechecks provenance and publishes only still-eligible events
   ---
-  duration_ms: 366.7132
+  duration_ms: 440.6678
   type: 'test'
   ...
 # Subtest: history batch with only newly restricted evidence publishes nothing
 ok 35 - history batch with only newly restricted evidence publishes nothing
   ---
-  duration_ms: 293.2505
+  duration_ms: 300.8156
   type: 'test'
   ...
 # Subtest: duplicate capture writes provenance only when the merge adds a restriction
 ok 36 - duplicate capture writes provenance only when the merge adds a restriction
   ---
-  duration_ms: 409.2182
+  duration_ms: 340.1612
   type: 'test'
   ...
 # Subtest: a corrupt stored provenance row never fails or promotes a harmless duplicate capture
 ok 37 - a corrupt stored provenance row never fails or promotes a harmless duplicate capture
   ---
-  duration_ms: 476.2564
+  duration_ms: 409.2894
   type: 'test'
   ...
 # Subtest: index observation runs outside the SQLite writer transaction and stays fail-open
 ok 38 - index observation runs outside the SQLite writer transaction and stays fail-open
   ---
-  duration_ms: 460.9302
+  duration_ms: 438.668
   type: 'test'
   ...
-# (node:72436) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:41904) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: dashboard refuses a mismatched Host header (DNS rebinding) but serves the exact loopback host
 ok 39 - dashboard refuses a mismatched Host header (DNS rebinding) but serves the exact loopback host
   ---
-  duration_ms: 835.4113
+  duration_ms: 620.5893
   type: 'test'
   ...
 # Subtest: static serving cannot escape the assets directory
 ok 40 - static serving cannot escape the assets directory
   ---
-  duration_ms: 513.6294
+  duration_ms: 559.0502
   type: 'test'
   ...
 # Subtest: request bodies over the limit and non-JSON POSTs are refused before authentication logic
 ok 41 - request bodies over the limit and non-JSON POSTs are refused before authentication logic
   ---
-  duration_ms: 358.0696
+  duration_ms: 430.027
   type: 'test'
   ...
 # Subtest: session cookie is named per port so two dashboards on 127.0.0.1 do not overwrite each other
 ok 42 - session cookie is named per port so two dashboards on 127.0.0.1 do not overwrite each other
   ---
-  duration_ms: 1028.3545
+  duration_ms: 1065.7981
   type: 'test'
   ...
 # Subtest: a pagination cursor issued before a settings save still works after it
 ok 43 - a pagination cursor issued before a settings save still works after it
   ---
-  duration_ms: 725.9832
+  duration_ms: 865.3095
   type: 'test'
   ...
 # Subtest: known worker error kinds keep their status and code; unknown errors stay generic
 ok 44 - known worker error kinds keep their status and code; unknown errors stay generic
   ---
-  duration_ms: 751.1518
+  duration_ms: 627.1488
   type: 'test'
   ...
 # Subtest: publicFailure allowlists safe kinds and never forwards provider bodies, paths or captured text
 ok 45 - publicFailure allowlists safe kinds and never forwards provider bodies, paths or captured text
   ---
-  duration_ms: 2.6941
+  duration_ms: 3.236
   type: 'test'
   ...
 # Subtest: static asset read errors end the response without crashing the server
 ok 46 - static asset read errors end the response without crashing the server
   ---
-  duration_ms: 618.6386
+  duration_ms: 641.5554
   type: 'test'
   ...
 # Subtest: unexpected worker exit stops the dashboard instead of leaving a permanently broken panel
 ok 47 - unexpected worker exit stops the dashboard instead of leaving a permanently broken panel
   ---
-  duration_ms: 653.4506
+  duration_ms: 703.8769
   type: 'test'
   ...
 # Subtest: cmm dashboard exits by itself with code 0 after stdin EOF and closes its port
 ok 48 - cmm dashboard exits by itself with code 0 after stdin EOF and closes its port
   ---
-  duration_ms: 920.591
+  duration_ms: 1381.5682
   type: 'test'
   ...
 # Subtest: cmm dashboard exits non-zero with a clear message when its worker dies
 ok 49 - cmm dashboard exits non-zero with a clear message when its worker dies
   ---
-  duration_ms: 2646.572
+  duration_ms: 2220.6995
   type: 'test'
   ...
-# (node:28836) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:59960) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: installed-assets dashboard authenticates, blocks cross-origin/CSRF, and preserves verified original downloads
 ok 50 - installed-assets dashboard authenticates, blocks cross-origin/CSRF, and preserves verified original downloads
   ---
-  duration_ms: 970.197
+  duration_ms: 892.8863
   type: 'test'
   ...
 # Subtest: dashboard refuses unknown storage instead of creating an empty archive
 ok 51 - dashboard refuses unknown storage instead of creating an empty archive
   ---
-  duration_ms: 0.825
+  duration_ms: 0.8226
   type: 'test'
   ...
 # Subtest: a worker that never acknowledges startJob cannot pin a queue slot or a running job past the late-retention cap
 ok 52 - a worker that never acknowledges startJob cannot pin a queue slot or a running job past the late-retention cap
   ---
-  duration_ms: 1187.7394
+  duration_ms: 1241.524
   type: 'test'
   ...
-# (node:42496) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:75908) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: a late initial config publisher preserves the winner and its exact bytes
 ok 53 - a late initial config publisher preserves the winner and its exact bytes
   ---
-  duration_ms: 39.0097
+  duration_ms: 39.9624
   type: 'test'
   ...
 # Subtest: simultaneous initial config publishers have exactly one complete winner
 ok 54 - simultaneous initial config publishers have exactly one complete winner
   ---
-  duration_ms: 341.6949
+  duration_ms: 279.1599
   type: 'test'
   ...
 # Subtest: three independent Node writers serialize SQLite and deduplicate blobs without losing any call
 ok 55 - three independent Node writers serialize SQLite and deduplicate blobs without losing any call
   ---
-  duration_ms: 2799.4967
+  duration_ms: 2790.539
   type: 'test'
   ...
 # Subtest: future database schema is refused before any table or user_version is rewritten
 ok 56 - future database schema is refused before any table or user_version is rewritten
   ---
-  duration_ms: 48.7554
+  duration_ms: 82.2451
   type: 'test'
   ...
 # Subtest: nested transactions roll back only their savepoint and async callbacks cannot commit
 ok 57 - nested transactions roll back only their savepoint and async callbacks cannot commit
   ---
-  duration_ms: 69.2585
+  duration_ms: 95.5416
   type: 'test'
   ...
 # Subtest: GC commits event deletion before touching blobs and never deletes a shared live blob
 ok 58 - GC commits event deletion before touching blobs and never deletes a shared live blob
   ---
-  duration_ms: 348.3446
+  duration_ms: 474.1332
   type: 'test'
   ...
 # Subtest: symlinked archive paths cannot escape the storage root
 ok 59 - symlinked archive paths cannot escape the storage root # SKIP Creating a symlink may require Windows developer mode; path traversal is covered on every platform
   ---
-  duration_ms: 0.5375
+  duration_ms: 0.5498
   type: 'test'
   ...
 # Subtest: the CLI and demo run when launched through a symlinked directory (macOS /var, npm links)
 ok 60 - the CLI and demo run when launched through a symlinked directory (macOS /var, npm links)
   ---
-  duration_ms: 384.593
+  duration_ms: 346.3807
   type: 'test'
   ...
 # Subtest: hook processes leave stderr free of the node:sqlite experimental warning
 ok 61 - hook processes leave stderr free of the node:sqlite experimental warning
   ---
-  duration_ms: 148.2429
+  duration_ms: 151.9088
   type: 'test'
   ...
 # Subtest: a finished demo still succeeds when Windows briefly refuses to remove its disposable storage
 ok 62 - a finished demo still succeeds when Windows briefly refuses to remove its disposable storage
   ---
-  duration_ms: 1331.9002
+  duration_ms: 1267.0523
   type: 'test'
   ...
-# (node:78700) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:70432) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: v3 defaults preserve first-use output and need no model or RTK
 ok 63 - v3 defaults preserve first-use output and need no model or RTK
   ---
-  duration_ms: 426.6649
+  duration_ms: 364.1913
   type: 'test'
   ...
 # Subtest: RTK commands and hints are detected without executing or trusting a hint
 ok 64 - RTK commands and hints are detected without executing or trusting a hint
   ---
-  duration_ms: 544.3647
+  duration_ms: 332.2285
   type: 'test'
   ...
 # Subtest: host truncation can never be upgraded to complete by a local checksum
 ok 65 - host truncation can never be upgraded to complete by a local checksum
   ---
-  duration_ms: 258.6744
+  duration_ms: 360.0771
   type: 'test'
   ...
 # Subtest: malformed provenance fails closed before a successful archival claim
 ok 66 - malformed provenance fails closed before a successful archival claim
   ---
-  duration_ms: 112.6684
+  duration_ms: 105.5767
   type: 'test'
   ...
 # Subtest: middle-of-log evidence is searchable and maps to exact recall offsets
 ok 67 - middle-of-log evidence is searchable and maps to exact recall offsets
   ---
-  duration_ms: 237.666
+  duration_ms: 273.2038
   type: 'test'
   ...
 # Subtest: literal recall find returns mid-log evidence without rereading the entire field into context
 ok 68 - literal recall find returns mid-log evidence without rereading the entire field into context
   ---
-  duration_ms: 7647.7722
+  duration_ms: 8050.7985
   type: 'test'
   ...
 # Subtest: overlapping chunk indexing handles literal queries crossing chunk boundaries
 ok 69 - overlapping chunk indexing handles literal queries crossing chunk boundaries
   ---
-  duration_ms: 432.6418
+  duration_ms: 441.4232
   type: 'test'
   ...
 # Subtest: search cursor preserves records with identical timestamps and binds scope/query
 ok 70 - search cursor preserves records with identical timestamps and binds scope/query
   ---
-  duration_ms: 437.8834
+  duration_ms: 340.56
   type: 'test'
   ...
 # Subtest: index SQL/FTS metacharacters are data; literal punctuation is not an empty recent search
 ok 71 - index SQL/FTS metacharacters are data; literal punctuation is not an empty recent search
   ---
-  duration_ms: 232.7285
+  duration_ms: 190.1632
   type: 'test'
   ...
 # Subtest: reindex upgrades old records and GC removes their derived evidence
 ok 72 - reindex upgrades old records and GC removes their derived evidence
   ---
-  duration_ms: 333.1077
+  duration_ms: 233.0825
   type: 'test'
   ...
 # Subtest: projection marker spoofing or alteration never restores or replaces another text
 ok 73 - projection marker spoofing or alteration never restores or replaces another text
   ---
-  duration_ms: 447.8288
+  duration_ms: 172.1509
   type: 'test'
   ...
 # Subtest: projection receipts are bound to session and survive a process-equivalent reopen
 ok 74 - projection receipts are bound to session and survive a process-equivalent reopen
   ---
-  duration_ms: 235.4734
+  duration_ms: 254.6934
   type: 'test'
   ...
 # Subtest: a corrupted projection receipt is never trusted
 ok 75 - a corrupted projection receipt is never trusted
   ---
-  duration_ms: 190.5352
+  duration_ms: 206.7644
   type: 'test'
   ...
 # Subtest: below-pressure histories do not rewrite even if desired retention state is capsule
 ok 76 - below-pressure histories do not rewrite even if desired retention state is capsule
   ---
-  duration_ms: 258.7452
+  duration_ms: 192.1107
   type: 'test'
   ...
 # Subtest: only visible verified events are considered; absent archives are not counted as savings
 ok 77 - only visible verified events are considered; absent archives are not counted as savings
   ---
-  duration_ms: 242.0333
+  duration_ms: 223.0818
   type: 'test'
   ...
 # Subtest: insufficient batches remain untouched and create no projection receipt
 ok 78 - insufficient batches remain untouched and create no projection receipt
   ---
-  duration_ms: 238.5902
+  duration_ms: 190.0357
   type: 'test'
   ...
 # Subtest: history cooldown coalesces edits and critical pressure can override it
 ok 79 - history cooldown coalesces edits and critical pressure can override it
   ---
-  duration_ms: 261.62
+  duration_ms: 271.2704
   type: 'test'
   ...
 # Subtest: pin restores cached text even below pressure; no new compression batch is counted
 ok 80 - pin restores cached text even below pressure; no new compression batch is counted
   ---
-  duration_ms: 194.2501
+  duration_ms: 199.4254
   type: 'test'
   ...
 # Subtest: foreign and duplicate history events cannot poison another session
 ok 81 - foreign and duplicate history events cannot poison another session
   ---
-  duration_ms: 168.5072
+  duration_ms: 163.8505
   type: 'test'
   ...
 # Subtest: shared cross-agent reads cannot mutate pins on a foreign archive
 ok 82 - shared cross-agent reads cannot mutate pins on a foreign archive
   ---
-  duration_ms: 156.5138
+  duration_ms: 142.5162
   type: 'test'
   ...
 # Subtest: verification reports corrupted projection receipts, not just source blobs
 ok 83 - verification reports corrupted projection receipts, not just source blobs
   ---
-  duration_ms: 173.2383
+  duration_ms: 196.1566
   type: 'test'
   ...
 # Subtest: literal find with a small page includes the hit instead of only leading context
 ok 84 - literal find with a small page includes the hit instead of only leading context
   ---
-  duration_ms: 262.7116
+  duration_ms: 278.2904
   type: 'test'
   ...
 # Subtest: NUL-containing archives remain exact and are not put in lossy TEXT projection receipts
 ok 85 - NUL-containing archives remain exact and are not put in lossy TEXT projection receipts
   ---
-  duration_ms: 146.5949
+  duration_ms: 171.6871
   type: 'test'
   ...
 # Subtest: recalled histories keep source and target retention states independent
 ok 86 - recalled histories keep source and target retention states independent
   ---
-  duration_ms: 137.8206
+  duration_ms: 168.5794
   type: 'test'
   ...
 # Subtest: index capacity is explicit and an unindexed tail remains fully recallable
 ok 87 - index capacity is explicit and an unindexed tail remains fully recallable
   ---
-  duration_ms: 795.4203
+  duration_ms: 953.2067
   type: 'test'
   ...
-# (node:49760) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:65344) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: fallback scorer never evicts
     # Subtest: caps a 0.85 fallback score at capsule under aggressive
     ok 1 - caps a 0.85 fallback score at capsule under aggressive
       ---
-      duration_ms: 6197.4453
+      duration_ms: 6414.3543
       type: 'test'
       ...
     # Subtest: still caps at capsule when the primary is the fallback itself
     ok 2 - still caps at capsule when the primary is the fallback itself
       ---
-      duration_ms: 6050.0443
+      duration_ms: 5666.2316
       type: 'test'
       ...
     1..2
 ok 88 - fallback scorer never evicts
   ---
-  duration_ms: 12249.1585
+  duration_ms: 12082.1858
   type: 'suite'
   ...
-# (node:52264) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:29592) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: archive gc
     # Subtest: is a no-op when no retention caps are configured
     ok 1 - is a no-op when no retention caps are configured
       ---
-      duration_ms: 117.0452
+      duration_ms: 130.1938
       type: 'test'
       ...
     # Subtest: deletes only evicted events older than retentionDays
     ok 2 - deletes only evicted events older than retentionDays
       ---
-      duration_ms: 223.6726
+      duration_ms: 297.3891
       type: 'test'
       ...
     # Subtest: skips pinned and recall-protected evicted events
     ok 3 - skips pinned and recall-protected evicted events
       ---
-      duration_ms: 243.3588
+      duration_ms: 299.1786
       type: 'test'
       ...
     # Subtest: never deletes capsule-state events
     ok 4 - never deletes capsule-state events
       ---
-      duration_ms: 208.4992
+      duration_ms: 282.5992
       type: 'test'
       ...
     # Subtest: keeps truly evicted evidence when its source chain becomes active again until freshness expires
     ok 5 - keeps truly evicted evidence when its source chain becomes active again until freshness expires
       ---
-      duration_ms: 853.9824
+      duration_ms: 810.9785
       type: 'test'
       ...
     # Subtest: removes blob files only when no event references them
     ok 6 - removes blob files only when no event references them
       ---
-      duration_ms: 2061.2532
+      duration_ms: 2206.4467
       type: 'test'
       ...
     # Subtest: maxSizeBytes deletes oldest evicted first until under the cap
     ok 7 - maxSizeBytes deletes oldest evicted first until under the cap
       ---
-      duration_ms: 384.2816
+      duration_ms: 485.19
       type: 'test'
       ...
     1..7
 ok 89 - archive gc
   ---
-  duration_ms: 4093.9677
+  duration_ms: 4513.7761
   type: 'suite'
   ...
-# (node:63880) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:58288) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: archive is idempotent on duplicate tool_call_id
     # Subtest: second record returns the same event without duplicating
     ok 1 - second record returns the same event without duplicating
       ---
-      duration_ms: 113.7996
+      duration_ms: 141.4164
       type: 'test'
       ...
     # Subtest: duplicate detection is scoped to (agent, workspace, tool_call_id)
     ok 2 - duplicate detection is scoped to (agent, workspace, tool_call_id)
       ---
-      duration_ms: 95.2272
+      duration_ms: 93.0445
       type: 'test'
       ...
     1..2
 ok 90 - archive is idempotent on duplicate tool_call_id
   ---
-  duration_ms: 211.8926
+  duration_ms: 236.0246
   type: 'suite'
   ...
-# (node:72216) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:74840) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: Claude native hook replaces only successful canonical Bash stdout and preserves all metadata
 ok 91 - Claude native hook replaces only successful canonical Bash stdout and preserves all metadata
   ---
-  duration_ms: 312.7934
+  duration_ms: 419.6363
   type: 'test'
   ...
 # Subtest: Claude structured unknown shapes and failures never emit a replacement
 ok 92 - Claude structured unknown shapes and failures never emit a replacement
   ---
-  duration_ms: 521.9523
+  duration_ms: 507.4678
   type: 'test'
   ...
 # Subtest: Codex captures stdout silently and never uses block, continue or additionalContext as compression
 ok 93 - Codex captures stdout silently and never uses block, continue or additionalContext as compression
   ---
-  duration_ms: 272.6261
+  duration_ms: 278.0798
   type: 'test'
   ...
 # Subtest: Kimi accepts tool_output and generates observation IDs when the post hook has no call ID
 ok 94 - Kimi accepts tool_output and generates observation IDs when the post hook has no call ID
   ---
-  duration_ms: 407.607
+  duration_ms: 349.9992
   type: 'test'
   ...
 # Subtest: own memory tools are ignored and failure markers are conservative
 ok 95 - own memory tools are ignored and failure markers are conservative
   ---
-  duration_ms: 59.9555
+  duration_ms: 71.976
   type: 'test'
   ...
 # Subtest: archive failure keeps the native result unchanged
 ok 96 - archive failure keeps the native result unchanged
   ---
-  duration_ms: 72.6171
+  duration_ms: 86.7758
   type: 'test'
   ...
 # Subtest: actual hook CLI fails open for malformed input, invalid config and unrelated workspaces
 ok 97 - actual hook CLI fails open for malformed input, invalid config and unrelated workspaces
   ---
-  duration_ms: 1288.7259
+  duration_ms: 1335.4931
   type: 'test'
   ...
 # Subtest: actual Codex hook persists a searchable event without polluting stdout
 ok 98 - actual Codex hook persists a searchable event without polluting stdout
   ---
-  duration_ms: 1171.4026
+  duration_ms: 1673.9211
   type: 'test'
   ...
 # Subtest: setup preview writes nothing and excludes existing secrets from CLI output
 ok 99 - setup preview writes nothing and excludes existing secrets from CLI output
   ---
-  duration_ms: 324.1611
+  duration_ms: 351.0493
   type: 'test'
   ...
 # Subtest: Claude setup preserves unrelated hooks and MCP servers, backs up originals and is idempotent
 ok 100 - Claude setup preserves unrelated hooks and MCP servers, backs up originals and is idempotent
   ---
-  duration_ms: 158.5619
+  duration_ms: 156.8565
   type: 'test'
   ...
 # Subtest: Claude hooks use shell-free exec form and replace an older shell-form CMM handler
 ok 101 - Claude hooks use shell-free exec form and replace an older shell-form CMM handler
   ---
-  duration_ms: 139.1887
+  duration_ms: 130.4493
   type: 'test'
   ...
 # Subtest: unmanaged config conflicts and malformed blocks are refused without overwriting
 ok 102 - unmanaged config conflicts and malformed blocks are refused without overwriting
   ---
-  duration_ms: 98.1098
+  duration_ms: 80.6157
   type: 'test'
   ...
 # Subtest: Codex TOML surgical merge preserves user bytes and has no approval bypass
 ok 103 - Codex TOML surgical merge preserves user bytes and has no approval bypass
   ---
-  duration_ms: 107.7841
+  duration_ms: 112.9019
   type: 'test'
   ...
 # Subtest: Codex Windows hooks quote PowerShell literals while other shells retain their command form
 ok 104 - Codex Windows hooks quote PowerShell literals while other shells retain their command form
   ---
-  duration_ms: 1.3586
+  duration_ms: 0.6708
   type: 'test'
   ...
 # Subtest: generated Codex hook upgrades the old command and archives through real Windows PowerShell
 ok 105 - generated Codex hook upgrades the old command and archives through real Windows PowerShell
   ---
-  duration_ms: 5915.1325
+  duration_ms: 5038.5388
   type: 'test'
   ...
 # Subtest: a config changed after planning is not overwritten
 ok 106 - a config changed after planning is not overwritten
   ---
-  duration_ms: 72.3349
+  duration_ms: 66.2083
   type: 'test'
   ...
 # Subtest: Windows commands quote spaces and refuse shell metacharacters; POSIX apostrophes are escaped
 ok 107 - Windows commands quote spaces and refuse shell metacharacters; POSIX apostrophes are escaped
   ---
-  duration_ms: 0.5275
+  duration_ms: 0.3812
   type: 'test'
   ...
 # Subtest: Kimi setup adds per-workspace user-level hooks and project MCP; uninstall restores exact bytes
 ok 108 - Kimi setup adds per-workspace user-level hooks and project MCP; uninstall restores exact bytes
   ---
-  duration_ms: 171.7061
+  duration_ms: 183.1813
   type: 'test'
   ...
 # Subtest: Kimi hooks are recognized after a comment-dropping rewrite; unsafe forms and missing config are refused
 ok 109 - Kimi hooks are recognized after a comment-dropping rewrite; unsafe forms and missing config are refused
   ---
-  duration_ms: 108.1176
+  duration_ms: 83.7706
   type: 'test'
   ...
 # Subtest: Kimi setup and uninstall refuse multiline TOML values without changing user files
 ok 110 - Kimi setup and uninstall refuse multiline TOML values without changing user files
   ---
-  duration_ms: 99.6994
+  duration_ms: 83.6701
   type: 'test'
   ...
 # Subtest: Kimi TOML guard permits triple quotes in comments and ordinary single-line strings
 ok 111 - Kimi TOML guard permits triple quotes in comments and ordinary single-line strings
   ---
-  duration_ms: 153.8501
+  duration_ms: 114.9354
   type: 'test'
   ...
 # Subtest: Kimi 2,000-unit tool_output prefixes are partial evidence and are never projected again
 ok 112 - Kimi 2,000-unit tool_output prefixes are partial evidence and are never projected again
   ---
-  duration_ms: 184.4376
+  duration_ms: 169.9705
   type: 'test'
   ...
 # Subtest: a user-level Kimi hook ignores other projects silently
 ok 113 - a user-level Kimi hook ignores other projects silently
   ---
-  duration_ms: 223.0435
+  duration_ms: 233.2385
   type: 'test'
   ...
 # Subtest: removed Kimi launch wrapper explains the supported setup
 ok 114 - removed Kimi launch wrapper explains the supported setup
   ---
-  duration_ms: 147.3787
+  duration_ms: 140.6203
   type: 'test'
   ...
 # Subtest: OpenCode contract changes only completed tool-result text; user/prose/input/attachments remain intact
 ok 115 - OpenCode contract changes only completed tool-result text; user/prose/input/attachments remain intact
   ---
-  duration_ms: 2.1429
+  duration_ms: 1.7526
   type: 'test'
   ...
 # Subtest: real OpenCode plugin Node bridge archives, projects, resumes and restores a pinned result
 ok 116 - real OpenCode plugin Node bridge archives, projects, resumes and restores a pinned result
   ---
-  duration_ms: 596.2038
+  duration_ms: 568.6138
   type: 'test'
   ...
 # Subtest: OpenCode native truncation metadata protects after-hook and transform-only captures from recompression
 ok 117 - OpenCode native truncation metadata protects after-hook and transform-only captures from recompression
   ---
-  duration_ms: 356.9298
+  duration_ms: 449.1432
   type: 'test'
   ...
 # Subtest: OpenCode disposal waits for the bridge and repeated disposal shares its completion
 ok 118 - OpenCode disposal waits for the bridge and repeated disposal shares its completion
   ---
-  duration_ms: 1.0662
+  duration_ms: 1.0469
   type: 'test'
   ...
 # Subtest: CLI help and unknown commands do not create storage, exports refuse overwrite
 ok 119 - CLI help and unknown commands do not create storage, exports refuse overwrite
   ---
-  duration_ms: 686.0608
+  duration_ms: 679.0524
   type: 'test'
   ...
 # Subtest: uninstall is reversible, removes only marked config and never deletes the archive
 ok 120 - uninstall is reversible, removes only marked config and never deletes the archive
   ---
-  duration_ms: 516.4031
+  duration_ms: 534.8778
   type: 'test'
   ...
 # Subtest: OpenCode global worktree sentinel never collapses unrelated projects into root
 ok 121 - OpenCode global worktree sentinel never collapses unrelated projects into root
   ---
-  duration_ms: 0.1738
+  duration_ms: 0.6581
   type: 'test'
   ...
-# (node:76544) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:77504) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: internal tools (context_*) are audit-only
     # Subtest: context_recall is not recorded as a tool event but is audited
     ok 1 - context_recall is not recorded as a tool event but is audited
       ---
-      duration_ms: 128.1775
+      duration_ms: 125.1765
       type: 'test'
       ...
     1..1
 ok 122 - internal tools (context_*) are audit-only
   ---
-  duration_ms: 129.3035
+  duration_ms: 126.174
   type: 'suite'
   ...
-# (node:4456) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:59328) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: lifecycle: record 鈫?pressure 鈫?tidy
     # Subtest: every event gets a valid decision and stats stay consistent
     ok 1 - every event gets a valid decision and stats stay consistent
       ---
-      duration_ms: 422.8704
+      duration_ms: 420.9837
       type: 'test'
       ...
     1..1
 ok 123 - lifecycle: record 鈫?pressure 鈫?tidy
   ---
-  duration_ms: 423.9256
+  duration_ms: 421.9997
   type: 'suite'
   ...
-# (node:24052) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:51884) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: management scope rejects foreign event, session, chain and capsule without exposing archive refs
 ok 124 - management scope rejects foreign event, session, chain and capsule without exposing archive refs
   ---
-  duration_ms: 409.9233
+  duration_ms: 438.6736
   type: 'test'
   ...
 # Subtest: management pagination has a total order, signed expiry and binding to filters and scope
 ok 125 - management pagination has a total order, signed expiry and binding to filters and scope
   ---
-  duration_ms: 361.228
+  duration_ms: 382.0156
   type: 'test'
   ...
 # Subtest: management content and bounded download verify exact Unicode bytes without recall effects
 ok 126 - management content and bounded download verify exact Unicode bytes without recall effects
   ---
-  duration_ms: 450.6392
+  duration_ms: 289.666
   type: 'test'
   ...
 # Subtest: settings credentials are write-only and preserved, replaced and deleted under CAS
 ok 127 - settings credentials are write-only and preserved, replaced and deleted under CAS
   ---
-  duration_ms: 700.1276
+  duration_ms: 637.5108
   type: 'test'
   ...
 # Subtest: provider tests require a saved revision, synthetic schema and redact failed provider output
 ok 128 - provider tests require a saved revision, synthetic schema and redact failed provider output
   ---
-  duration_ms: 370.8744
+  duration_ms: 335.7914
   type: 'test'
   ...
 # Subtest: native provider tests use state/questions and failures never return remote bodies or keys
 ok 129 - native provider tests use state/questions and failures never return remote bodies or keys
   ---
-  duration_ms: 349.189
+  duration_ms: 428.7312
   type: 'test'
   ...
 # Subtest: content enforces the absolute 64,000-unit boundary without splitting Unicode
 ok 130 - content enforces the absolute 64,000-unit boundary without splitting Unicode
   ---
-  duration_ms: 8944.6166
+  duration_ms: 8937.7194
   type: 'test'
   ...
 # Subtest: settings reject carrying a stored key to another origin and credentials over cleartext http
 ok 131 - settings reject carrying a stored key to another origin and credentials over cleartext http
   ---
-  duration_ms: 278.783
+  duration_ms: 280.789
   type: 'test'
   ...
 # Subtest: a save whose writer lock cannot be removed is reported as saved with a static warning, not as a failure
 ok 132 - a save whose writer lock cannot be removed is reported as saved with a static warning, not as a failure
   ---
-  duration_ms: 164.6628
+  duration_ms: 198.3381
+  type: 'test'
+  ...
+# Subtest: compression records show which sessions were compressed and the verified view next to the original
+ok 133 - compression records show which sessions were compressed and the verified view next to the original
+  ---
+  duration_ms: 215.2961
+  type: 'test'
+  ...
+# Subtest: model usage reports configured roles, real calls and which scorer produced the scope scores
+ok 134 - model usage reports configured roles, real calls and which scorer produced the scope scores
+  ---
+  duration_ms: 160.8102
   type: 'test'
   ...
 # Subtest: event rows carry the input summary shown by search, and the shareable diagnostics omit the workspace path
-ok 133 - event rows carry the input summary shown by search, and the shareable diagnostics omit the workspace path
+ok 135 - event rows carry the input summary shown by search, and the shareable diagnostics omit the workspace path
   ---
-  duration_ms: 144.4383
+  duration_ms: 136.2103
   type: 'test'
   ...
-# (node:20152) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:60016) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: event identity is scoped to session; conflicting retries never overwrite evidence
-ok 134 - event identity is scoped to session; conflicting retries never overwrite evidence
+ok 136 - event identity is scoped to session; conflicting retries never overwrite evidence
   ---
-  duration_ms: 283.8335
+  duration_ms: 299.4798
   type: 'test'
   ...
 # Subtest: duplicate observations do not advance turns or multiply rows
-ok 135 - duplicate observations do not advance turns or multiply rows
+ok 137 - duplicate observations do not advance turns or multiply rows
   ---
-  duration_ms: 246.0777
+  duration_ms: 264.3261
   type: 'test'
   ...
 # Subtest: agent and workspace scopes are isolated; shared access is explicit and workspace-only
-ok 136 - agent and workspace scopes are isolated; shared access is explicit and workspace-only
+ok 138 - agent and workspace scopes are isolated; shared access is explicit and workspace-only
   ---
-  duration_ms: 261.2447
+  duration_ms: 241.069
   type: 'test'
   ...
 # Subtest: paged Unicode, CRLF and NUL recall reassembles exact input/output without splitting surrogate pairs
-ok 137 - paged Unicode, CRLF and NUL recall reassembles exact input/output without splitting surrogate pairs
+ok 139 - paged Unicode, CRLF and NUL recall reassembles exact input/output without splitting surrogate pairs
   ---
-  duration_ms: 702.5204
+  duration_ms: 829.5527
   type: 'test'
   ...
 # Subtest: partial recall is read-only; restoring a whole result creates a separate protected view
-ok 138 - partial recall is read-only; restoring a whole result creates a separate protected view
+ok 140 - partial recall is read-only; restoring a whole result creates a separate protected view
   ---
-  duration_ms: 411.7901
+  duration_ms: 320.852
   type: 'test'
   ...
 # Subtest: search treats FTS and SQL metacharacters as data and supports Unicode evidence
-ok 139 - search treats FTS and SQL metacharacters as data and supports Unicode evidence
+ok 141 - search treats FTS and SQL metacharacters as data and supports Unicode evidence
   ---
-  duration_ms: 330.4728
+  duration_ms: 317.9017
   type: 'test'
   ...
 # Subtest: projection is bounded, genuinely smaller, searchable and recoverable
-ok 140 - projection is bounded, genuinely smaller, searchable and recoverable
+ok 142 - projection is bounded, genuinely smaller, searchable and recoverable
   ---
-  duration_ms: 358.8819
+  duration_ms: 420.3899
   type: 'test'
   ...
 # Subtest: no projection when the caller output changed or savings are too small
-ok 141 - no projection when the caller output changed or savings are too small
+ok 143 - no projection when the caller output changed or savings are too small
   ---
-  duration_ms: 506.5281
+  duration_ms: 343.9661
   type: 'test'
   ...
 # Subtest: pin restores our previous history projection while preserving the exact captured original
-ok 142 - pin restores our previous history projection while preserving the exact captured original
+ok 144 - pin restores our previous history projection while preserving the exact captured original
   ---
-  duration_ms: 406.1288
+  duration_ms: 409.4567
   type: 'test'
   ...
 # Subtest: capture-only mode never projects or tidies outputs
-ok 143 - capture-only mode never projects or tidies outputs
+ok 145 - capture-only mode never projects or tidies outputs
   ---
-  duration_ms: 424.6019
+  duration_ms: 404.7232
   type: 'test'
   ...
 # Subtest: OpenCode captures protect newly observed outputs for their first consumption window
-ok 144 - OpenCode captures protect newly observed outputs for their first consumption window
+ok 146 - OpenCode captures protect newly observed outputs for their first consumption window
   ---
-  duration_ms: 335.2017
+  duration_ms: 681.5037
   type: 'test'
   ...
 # Subtest: corrupt external blob blocks projection and verification reports the exact event
-ok 145 - corrupt external blob blocks projection and verification reports the exact event
+ok 147 - corrupt external blob blocks projection and verification reports the exact event
   ---
-  duration_ms: 407.4338
+  duration_ms: 497.0542
   type: 'test'
   ...
 # Subtest: inline integrity and canonical blob paths are verified; malformed UTF-16 is refused
-ok 146 - inline integrity and canonical blob paths are verified; malformed UTF-16 is refused
+ok 148 - inline integrity and canonical blob paths are verified; malformed UTF-16 is refused
   ---
-  duration_ms: 293.7137
+  duration_ms: 338.9527
   type: 'test'
   ...
 # Subtest: an already-existing corrupt hash file cannot count as an archived duplicate
-ok 147 - an already-existing corrupt hash file cannot count as an archived duplicate
+ok 149 - an already-existing corrupt hash file cannot count as an archived duplicate
   ---
-  duration_ms: 80.4484
+  duration_ms: 70.8526
   type: 'test'
   ...
 # Subtest: terminal output tail and structured stdout retain failure and test facts
-ok 148 - terminal output tail and structured stdout retain failure and test facts
+ok 150 - terminal output tail and structured stdout retain failure and test facts
   ---
-  duration_ms: 7.1178
+  duration_ms: 7.6056
   type: 'test'
   ...
 # Subtest: invalid provider JSON fails over to the next provider, rather than counting as success
-ok 149 - invalid provider JSON fails over to the next provider, rather than counting as success
+ok 151 - invalid provider JSON fails over to the next provider, rather than counting as success
   ---
-  duration_ms: 101.5293
+  duration_ms: 67.1331
   type: 'test'
   ...
 # Subtest: NaN custom scorer never evicts an event
-ok 150 - NaN custom scorer never evicts an event
+ok 152 - NaN custom scorer never evicts an event
   ---
-  duration_ms: 130.9506
+  duration_ms: 132.3224
   type: 'test'
   ...
 # Subtest: pin arriving while an asynchronous scorer runs wins over its stale result
-ok 151 - pin arriving while an asynchronous scorer runs wins over its stale result
+ok 153 - pin arriving while an asynchronous scorer runs wins over its stale result
   ---
-  duration_ms: 118.0232
+  duration_ms: 106.5413
   type: 'test'
   ...
 # Subtest: GC cannot starve behind protected old events or delete shared content still referenced
-ok 152 - GC cannot starve behind protected old events or delete shared content still referenced
+ok 154 - GC cannot starve behind protected old events or delete shared content still referenced
   ---
-  duration_ms: 2400.0332
+  duration_ms: 2640.212
   type: 'test'
   ...
 # Subtest: invalid config is not silently replaced with defaults
-ok 153 - invalid config is not silently replaced with defaults
+ok 155 - invalid config is not silently replaced with defaults
   ---
-  duration_ms: 87.7362
+  duration_ms: 86.0204
   type: 'test'
   ...
 # Subtest: shared cross-agent recall cannot reassign or poison the calling agent session
-ok 154 - shared cross-agent recall cannot reassign or poison the calling agent session
+ok 156 - shared cross-agent recall cannot reassign or poison the calling agent session
   ---
-  duration_ms: 504.1292
+  duration_ms: 336.6107
   type: 'test'
   ...
 # Subtest: blob integrity is checked on raw bytes before UTF-8 replacement decoding
-ok 155 - blob integrity is checked on raw bytes before UTF-8 replacement decoding
+ok 157 - blob integrity is checked on raw bytes before UTF-8 replacement decoding
   ---
-  duration_ms: 80.631
+  duration_ms: 95.6513
   type: 'test'
   ...
-# (node:58124) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:67512) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
-# (node:58124) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
+# (node:67512) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
 # Subtest: with a live lease, slot writes that always fail never break capture, recall, close or provider paths
-ok 156 - with a live lease, slot writes that always fail never break capture, recall, close or provider paths
+ok 158 - with a live lease, slot writes that always fail never break capture, recall, close or provider paths
   ---
-  duration_ms: 288.8971
+  duration_ms: 322.0717
   type: 'test'
   ...
 # Subtest: a slot that turns into an unwritable directory after claiming is tolerated by operations, heartbeat and close
-ok 157 - a slot that turns into an unwritable directory after claiming is tolerated by operations, heartbeat and close
+ok 159 - a slot that turns into an unwritable directory after claiming is tolerated by operations, heartbeat and close
   ---
-  duration_ms: 108.4964
+  duration_ms: 113.6291
   type: 'test'
   ...
 # Subtest: a failed lease read means unknown: the heartbeat keeps running, and an idle process reappears under a later lease
-ok 158 - a failed lease read means unknown: the heartbeat keeps running, and an idle process reappears under a later lease
+ok 160 - a failed lease read means unknown: the heartbeat keeps running, and an idle process reappears under a later lease
   ---
-  duration_ms: 128.7388
+  duration_ms: 145.0202
   type: 'test'
   ...
 # Subtest: close always attempts the stopped marker, even when the lease cannot be read at that moment
-ok 159 - close always attempts the stopped marker, even when the lease cannot be read at that moment
+ok 161 - close always attempts the stopped marker, even when the lease cannot be read at that moment
   ---
-  duration_ms: 61.1626
+  duration_ms: 64.2255
   type: 'test'
   ...
 # Subtest: writes replace atomically: concurrent readers never see an empty or partial slot
-ok 160 - writes replace atomically: concurrent readers never see an empty or partial slot
+ok 162 - writes replace atomically: concurrent readers never see an empty or partial slot
   ---
-  duration_ms: 1861.3306
+  duration_ms: 1850.4911
   type: 'test'
   ...
 # Subtest: hook churn: 200 sequential short-lived instances under one lease stay within 128 files and are each observed
-ok 161 - hook churn: 200 sequential short-lived instances under one lease stay within 128 files and are each observed
+ok 163 - hook churn: 200 sequential short-lived instances under one lease stay within 128 files and are each observed
   ---
-  duration_ms: 6618.4321
+  duration_ms: 6784.7701
   type: 'test'
   ...
 # Subtest: slot allocation is one bounded probe pass regardless of how full the table is
-ok 162 - slot allocation is one bounded probe pass regardless of how full the table is
+ok 164 - slot allocation is one bounded probe pass regardless of how full the table is
   ---
-  duration_ms: 335.2802
+  duration_ms: 314.9568
   type: 'test'
   ...
 # Subtest: over-long workspace ids and labels never push a publish over 64 KiB; the instance stays fresh
-ok 163 - over-long workspace ids and labels never push a publish over 64 KiB; the instance stays fresh
+ok 165 - over-long workspace ids and labels never push a publish over 64 KiB; the instance stays fresh
   ---
-  duration_ms: 1417.6284
+  duration_ms: 1160.924
   type: 'test'
   ...
 # Subtest: bursts are coalesced to about one write per 250 ms and the trailing flush is guaranteed
-ok 164 - bursts are coalesced to about one write per 250 ms and the trailing flush is guaranteed
+ok 166 - bursts are coalesced to about one write per 250 ms and the trailing flush is guaranteed
   ---
-  duration_ms: 1296.53
+  duration_ms: 1285.1359
   type: 'test'
   ...
 # Subtest: short-lived processes flush at the end of the outermost operation and exit without waiting for timers
-ok 165 - short-lived processes flush at the end of the outermost operation and exit without waiting for timers
+ok 167 - short-lived processes flush at the end of the outermost operation and exit without waiting for timers
   ---
-  duration_ms: 196.9141
+  duration_ms: 199.3508
   type: 'test'
   ...
 # Subtest: operation statuses: chain failure is an error, scorer/capsule degradations are explicit flags, not reason-string guesses
-ok 166 - operation statuses: chain failure is an error, scorer/capsule degradations are explicit flags, not reason-string guesses
+ok 168 - operation statuses: chain failure is an error, scorer/capsule degradations are explicit flags, not reason-string guesses
   ---
-  duration_ms: 311.827
+  duration_ms: 376.9482
   type: 'test'
   ...
 # Subtest: a failed temporary write or rename never leaves a .tmp file behind
-ok 167 - a failed temporary write or rename never leaves a .tmp file behind
+ok 169 - a failed temporary write or rename never leaves a .tmp file behind
   ---
-  duration_ms: 220.2052
+  duration_ms: 229.6225
   type: 'test'
   ...
 # Subtest: slot claiming removes a bounded number of stale orphan temporaries and never a fresh one
-ok 168 - slot claiming removes a bounded number of stale orphan temporaries and never a fresh one
+ok 170 - slot claiming removes a bounded number of stale orphan temporaries and never a fresh one
   ---
-  duration_ms: 78.9406
+  duration_ms: 75.5233
   type: 'test'
   ...
 # Subtest: a corrupt or unusable lease file is rewritten by the dashboard heartbeat; a foreign dashboard lease is not
-ok 169 - a corrupt or unusable lease file is rewritten by the dashboard heartbeat; a foreign dashboard lease is not
+ok 171 - a corrupt or unusable lease file is rewritten by the dashboard heartbeat; a foreign dashboard lease is not
   ---
-  duration_ms: 143.2777
+  duration_ms: 148.9166
   type: 'test'
   ...
-# (node:59676) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:31268) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: runtime stays disabled without a dashboard lease; unavailable channels never break archive or provider calls
-ok 170 - runtime stays disabled without a dashboard lease; unavailable channels never break archive or provider calls
+ok 172 - runtime stays disabled without a dashboard lease; unavailable channels never break archive or provider calls
   ---
-  duration_ms: 178.694
+  duration_ms: 215.9909
   type: 'test'
   ...
 # Subtest: operation snapshots show real start/end, source scope and stable adopted revision with no private content
-ok 171 - operation snapshots show real start/end, source scope and stable adopted revision with no private content
+ok 173 - operation snapshots show real start/end, source scope and stable adopted revision with no private content
   ---
-  duration_ms: 304.8405
+  duration_ms: 281.8359
   type: 'test'
   ...
 # Subtest: independent hook process observations are visible and terminate without a persistent heartbeat
-ok 172 - independent hook process observations are visible and terminate without a persistent heartbeat
+ok 174 - independent hook process observations are visible and terminate without a persistent heartbeat
   ---
-  duration_ms: 336.3196
+  duration_ms: 403.0567
   type: 'test'
   ...
 # Subtest: stale heartbeats never become running activities or PID liveness assertions; lease replacement isolates observation windows
-ok 173 - stale heartbeats never become running activities or PID liveness assertions; lease replacement isolates observation windows
+ok 175 - stale heartbeats never become running activities or PID liveness assertions; lease replacement isolates observation windows
   ---
-  duration_ms: 167.6305
+  duration_ms: 269.7877
   type: 'test'
   ...
 # Subtest: interrupted stale metadata can be recycled without touching the archive
-ok 174 - interrupted stale metadata can be recycled without touching the archive
+ok 176 - interrupted stale metadata can be recycled without touching the archive
   ---
-  duration_ms: 249.4009
+  duration_ms: 347.4314
   type: 'test'
   ...
 # Subtest: runtime data is bounded across hook churn, active operations, labels, and untrusted metadata files
-ok 175 - runtime data is bounded across hook churn, active operations, labels, and untrusted metadata files
+ok 177 - runtime data is bounded across hook churn, active operations, labels, and untrusted metadata files
   ---
-  duration_ms: 8348.6375
+  duration_ms: 7810.6044
   type: 'test'
   ...
 # Subtest: provider observation includes validation failures and preserves the original call ledger
-ok 176 - provider observation includes validation failures and preserves the original call ledger
+ok 178 - provider observation includes validation failures and preserves the original call ledger
   ---
-  duration_ms: 41.7284
+  duration_ms: 55.5092
   type: 'test'
   ...
 # Subtest: a conservative scoring fallback is observed even when its low score keeps the event
-ok 177 - a conservative scoring fallback is observed even when its low score keeps the event
+ok 179 - a conservative scoring fallback is observed even when its low score keeps the event
   ---
-  duration_ms: 231.596
+  duration_ms: 174.1022
   type: 'test'
   ...
 # Subtest: unpin rolls back intermediate writes and rechecks the source agent inside its transaction
-ok 178 - unpin rolls back intermediate writes and rechecks the source agent inside its transaction
+ok 180 - unpin rolls back intermediate writes and rechecks the source agent inside its transaction
   ---
-  duration_ms: 96.7933
+  duration_ms: 116.6516
   type: 'test'
   ...
 # Subtest: verify exposes progress, yields to cancellation, and preserves captured bytes and completeness
-ok 179 - verify exposes progress, yields to cancellation, and preserves captured bytes and completeness
+ok 181 - verify exposes progress, yields to cancellation, and preserves captured bytes and completeness
   ---
-  duration_ms: 1644.5778
+  duration_ms: 1524.4948
   type: 'test'
   ...
-# (node:31544) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:39304) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # [cmm] Capture/projection unavailable; tool outputs unchanged. Run cmm doctor. bridge down
 # [cmm] Capture/projection unavailable; tool outputs unchanged. Run cmm doctor. registry closed
 # Subtest: OpenCode 2.x registers the five recall tools directly, outside code mode, with their JSON Schemas
-ok 180 - OpenCode 2.x registers the five recall tools directly, outside code mode, with their JSON Schemas
+ok 182 - OpenCode 2.x registers the five recall tools directly, outside code mode, with their JSON Schemas
   ---
-  duration_ms: 3.7448
+  duration_ms: 4.0943
   type: 'test'
   ...
 # Subtest: OpenCode 2.x archives the exact model-visible text and changes only presented tool-result text in the outgoing request
-ok 181 - OpenCode 2.x archives the exact model-visible text and changes only presented tool-result text in the outgoing request
+ok 183 - OpenCode 2.x archives the exact model-visible text and changes only presented tool-result text in the outgoing request
   ---
-  duration_ms: 3.6792
+  duration_ms: 2.9193
   type: 'test'
   ...
 # Subtest: OpenCode 2.x keeps code-mode inner calls apart from the execute result that shares their call ID
-ok 182 - OpenCode 2.x keeps code-mode inner calls apart from the execute result that shares their call ID
+ok 184 - OpenCode 2.x keeps code-mode inner calls apart from the execute result that shares their call ID
   ---
-  duration_ms: 0.8822
+  duration_ms: 0.7529
   type: 'test'
   ...
 # Subtest: OpenCode 2.x result text mirrors the host normalization
-ok 183 - OpenCode 2.x result text mirrors the host normalization
+ok 185 - OpenCode 2.x result text mirrors the host normalization
   ---
-  duration_ms: 0.3729
+  duration_ms: 0.3142
   type: 'test'
   ...
 # Subtest: OpenCode 2.x hooks and tools fail open and setup survives a rejected registration
-ok 184 - OpenCode 2.x hooks and tools fail open and setup survives a rejected registration
+ok 186 - OpenCode 2.x hooks and tools fail open and setup survives a rejected registration
   ---
-  duration_ms: 1.3088
+  duration_ms: 1.328
   type: 'test'
   ...
 # Subtest: OpenCode 2.x cleanup disposes every registration and then the bridge exactly once
-ok 185 - OpenCode 2.x cleanup disposes every registration and then the bridge exactly once
+ok 187 - OpenCode 2.x cleanup disposes every registration and then the bridge exactly once
   ---
-  duration_ms: 0.3739
+  duration_ms: 0.3693
   type: 'test'
   ...
 # Subtest: real OpenCode 2.x plugin Node bridge archives per project, projects under pressure and recalls
-ok 186 - real OpenCode 2.x plugin Node bridge archives per project, projects under pressure and recalls
+ok 188 - real OpenCode 2.x plugin Node bridge archives per project, projects under pressure and recalls
   ---
-  duration_ms: 1224.2788
+  duration_ms: 1027.5136
   type: 'test'
   ...
 # Subtest: real OpenCode 2.x truncation metadata keeps partial evidence out of history projection
-ok 187 - real OpenCode 2.x truncation metadata keeps partial evidence out of history projection
+ok 189 - real OpenCode 2.x truncation metadata keeps partial evidence out of history projection
   ---
-  duration_ms: 1011.6749
+  duration_ms: 780.3557
   type: 'test'
   ...
 # Subtest: global OpenCode 2.x setup writes one managed user plugin that loads and archives per project
-ok 188 - global OpenCode 2.x setup writes one managed user plugin that loads and archives per project
+ok 190 - global OpenCode 2.x setup writes one managed user plugin that loads and archives per project
   ---
-  duration_ms: 1312.5592
+  duration_ms: 1211.3396
   type: 'test'
   ...
 # Subtest: OpenCode setup keeps 1.x generation by default and rejects global installs it cannot honor
-ok 189 - OpenCode setup keeps 1.x generation by default and rejects global installs it cannot honor
+ok 191 - OpenCode setup keeps 1.x generation by default and rejects global installs it cannot honor
   ---
-  duration_ms: 3.0651
+  duration_ms: 3.0851
   type: 'test'
   ...
 # Subtest: CLI global OpenCode dry run targets the user config and rejects ambiguous flags
-ok 190 - CLI global OpenCode dry run targets the user config and rejects ambiguous flags
+ok 192 - CLI global OpenCode dry run targets the user config and rejects ambiguous flags
   ---
-  duration_ms: 1480.9615
+  duration_ms: 1672.27
   type: 'test'
   ...
-# (node:10012) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:38168) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: pin session scoping
     # Subtest: a pin for session s1 does not protect the event in session s2
     ok 1 - a pin for session s1 does not protect the event in session s2
       ---
-      duration_ms: 418.8236
+      duration_ms: 322.0328
       type: 'test'
       ...
     # Subtest: a global pin protects the event in every session
     ok 2 - a global pin protects the event in every session
       ---
-      duration_ms: 309.0305
+      duration_ms: 279.8501
       type: 'test'
       ...
     # Subtest: the same event can be pinned in two sessions independently
     ok 3 - the same event can be pinned in two sessions independently
       ---
-      duration_ms: 85.796
+      duration_ms: 114.7499
       type: 'test'
       ...
     1..3
-ok 191 - pin session scoping
+ok 193 - pin session scoping
   ---
-  duration_ms: 815.2234
+  duration_ms: 718.5848
   type: 'suite'
   ...
-# (node:47732) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:30528) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: malformed JSON configuration errors do not echo its private source content
-ok 192 - malformed JSON configuration errors do not echo its private source content
+ok 194 - malformed JSON configuration errors do not echo its private source content
   ---
-  duration_ms: 108.1881
+  duration_ms: 125.286
   type: 'test'
   ...
 # Subtest: provider JSON validation failure still fails over without storing response excerpts
-ok 193 - provider JSON validation failure still fails over without storing response excerpts
+ok 195 - provider JSON validation failure still fails over without storing response excerpts
   ---
-  duration_ms: 1.6433
+  duration_ms: 2.092
   type: 'test'
   ...
 # Subtest: all HTTP provider adapters omit private error bodies from failure diagnostics
-ok 194 - all HTTP provider adapters omit private error bodies from failure diagnostics
+ok 196 - all HTTP provider adapters omit private error bodies from failure diagnostics
   ---
-  duration_ms: 6.2315
+  duration_ms: 5.9035
   type: 'test'
   ...
-# (node:66652) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:76644) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: retention rechecks chain changes after a pending score
-ok 195 - retention rechecks chain changes after a pending score
+ok 197 - retention rechecks chain changes after a pending score
   ---
-  duration_ms: 711.8928
+  duration_ms: 722.4752
   type: 'test'
   ...
 # Subtest: retention rechecks pin changes after a pending score
-ok 196 - retention rechecks pin changes after a pending score
+ok 198 - retention rechecks pin changes after a pending score
   ---
-  duration_ms: 603.6201
+  duration_ms: 523.894
   type: 'test'
   ...
 # Subtest: retention rechecks recall changes after a pending score
-ok 197 - retention rechecks recall changes after a pending score
+ok 199 - retention rechecks recall changes after a pending score
   ---
-  duration_ms: 656.7295
+  duration_ms: 658.0117
   type: 'test'
   ...
 # Subtest: retention rechecks state changes after a pending score
-ok 198 - retention rechecks state changes after a pending score
+ok 200 - retention rechecks state changes after a pending score
   ---
-  duration_ms: 583.8683
+  duration_ms: 660.9479
   type: 'test'
   ...
 # Subtest: retention rechecks a chain that becomes active while its capsule is being built
-ok 199 - retention rechecks a chain that becomes active while its capsule is being built
+ok 201 - retention rechecks a chain that becomes active while its capsule is being built
   ---
-  duration_ms: 698.9968
+  duration_ms: 874.7211
   type: 'test'
   ...
 # Subtest: a same-session chain becoming active restores its cached history view below pressure
-ok 200 - a same-session chain becoming active restores its cached history view below pressure
+ok 202 - a same-session chain becoming active restores its cached history view below pressure
   ---
-  duration_ms: 937.7163
+  duration_ms: 748.1432
   type: 'test'
   ...
-# (node:38572) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:67792) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: JSONL handles arbitrary UTF-8 chunk boundaries, CRLF and trailing JSON
-ok 201 - JSONL handles arbitrary UTF-8 chunk boundaries, CRLF and trailing JSON
+ok 203 - JSONL handles arbitrary UTF-8 chunk boundaries, CRLF and trailing JSON
   ---
-  duration_ms: 6.9694
+  duration_ms: 6.1076
   type: 'test'
   ...
 # Subtest: invalid UTF-8 and over-limit JSONL cannot silently alter captured evidence
-ok 202 - invalid UTF-8 and over-limit JSONL cannot silently alter captured evidence
+ok 204 - invalid UTF-8 and over-limit JSONL cannot silently alter captured evidence
   ---
-  duration_ms: 1.5285
+  duration_ms: 1.6287
   type: 'test'
   ...
 # Subtest: JSON-RPC rejects malformed JSON, batch requests and invalid ids, then keeps serving
-ok 203 - JSON-RPC rejects malformed JSON, batch requests and invalid ids, then keeps serving
+ok 205 - JSON-RPC rejects malformed JSON, batch requests and invalid ids, then keeps serving
   ---
-  duration_ms: 3.6002
+  duration_ms: 3.8089
   type: 'test'
   ...
 # Subtest: JSON-RPC cancellation signals handlers and does not report an aborted operation as success
-ok 204 - JSON-RPC cancellation signals handlers and does not report an aborted operation as success
+ok 206 - JSON-RPC cancellation signals handlers and does not report an aborted operation as success
   ---
-  duration_ms: 5.9009
+  duration_ms: 5.9507
   type: 'test'
   ...
 # Subtest: actual CLI stdio MCP is interoperable with an independent client and emits no banner
-ok 205 - actual CLI stdio MCP is interoperable with an independent client and emits no banner
+ok 207 - actual CLI stdio MCP is interoperable with an independent client and emits no banner
   ---
-  duration_ms: 936.9933
+  duration_ms: 774.8527
   type: 'test'
   ...
 # Subtest: MCP negotiates a supported version instead of pretending to implement unknown future versions
-ok 206 - MCP negotiates a supported version instead of pretending to implement unknown future versions
+ok 208 - MCP negotiates a supported version instead of pretending to implement unknown future versions
   ---
-  duration_ms: 607.7783
+  duration_ms: 475.0252
   type: 'test'
   ...
 # Subtest: dual-era MCP serves stateless 2026-07-28 requests without a handshake and keeps legacy gating
-ok 207 - dual-era MCP serves stateless 2026-07-28 requests without a handshake and keeps legacy gating
+ok 209 - dual-era MCP serves stateless 2026-07-28 requests without a handshake and keeps legacy gating
   ---
-  duration_ms: 656.3478
+  duration_ms: 817.4312
   type: 'test'
   ...
 # Subtest: MCP gateway executes each tool once, shrinks eligible text and preserves every structured/error shape
-ok 208 - MCP gateway executes each tool once, shrinks eligible text and preserves every structured/error shape
+ok 210 - MCP gateway executes each tool once, shrinks eligible text and preserves every structured/error shape
   ---
-  duration_ms: 1159.7959
+  duration_ms: 1185.853
   type: 'test'
   ...
 # Subtest: MCP gateway keeps original output if archiving fails; it never repeats the upstream call
-ok 209 - MCP gateway keeps original output if archiving fails; it never repeats the upstream call
+ok 211 - MCP gateway keeps original output if archiving fails; it never repeats the upstream call
   ---
-  duration_ms: 357.6714
+  duration_ms: 363.3414
   type: 'test'
   ...
 # Subtest: upstream request timeout does not retry side effects
-ok 210 - upstream request timeout does not retry side effects
+ok 212 - upstream request timeout does not retry side effects
   ---
-  duration_ms: 678.1097
+  duration_ms: 790.2103
   type: 'test'
   ...
 # Subtest: the actual CLI proxy exposes memory plus upstream tools
-ok 211 - the actual CLI proxy exposes memory plus upstream tools
+ok 213 - the actual CLI proxy exposes memory plus upstream tools
   ---
-  duration_ms: 1306.7041
+  duration_ms: 946.5237
   type: 'test'
   ...
 # Subtest: the actual CLI proxy rejects stateless requests before upstream tool execution
-ok 212 - the actual CLI proxy rejects stateless requests before upstream tool execution
+ok 214 - the actual CLI proxy rejects stateless requests before upstream tool execution
   ---
-  duration_ms: 896.1103
+  duration_ms: 744.298
   type: 'test'
   ...
 # Subtest: fixture cleanup closes an actual SQLite child even when another resource cleanup fails
-ok 213 - fixture cleanup closes an actual SQLite child even when another resource cleanup fails
+ok 215 - fixture cleanup closes an actual SQLite child even when another resource cleanup fails
   ---
-  duration_ms: 385.2556
+  duration_ms: 394.8538
   type: 'test'
   ...
 # Subtest: RPC client and independent peer await actual termination when a child ignores stdin EOF
-ok 214 - RPC client and independent peer await actual termination when a child ignores stdin EOF
+ok 216 - RPC client and independent peer await actual termination when a child ignores stdin EOF
   ---
-  duration_ms: 2388.6409
+  duration_ms: 2344.125
   type: 'test'
   ...
 # Subtest: multimedia and annotated text are not projection candidates
-ok 215 - multimedia and annotated text are not projection candidates
+ok 217 - multimedia and annotated text are not projection candidates
   ---
-  duration_ms: 0.3216
+  duration_ms: 0.2514
   type: 'test'
   ...
-# (node:78384) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:77572) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: duplicate observations add partial restrictions without replacing originals or identities
-ok 216 - duplicate observations add partial restrictions without replacing originals or identities
+ok 218 - duplicate observations add partial restrictions without replacing originals or identities
   ---
-  duration_ms: 528.3818
+  duration_ms: 505.6492
   type: 'test'
   ...
 # Subtest: conflicting duplicate content cannot alter source provenance
-ok 217 - conflicting duplicate content cannot alter source provenance
+ok 219 - conflicting duplicate content cannot alter source provenance
   ---
-  duration_ms: 366.3893
+  duration_ms: 311.662
   type: 'test'
   ...
 # Subtest: new observations cannot upgrade completeness or replace imported source identity
-ok 218 - new observations cannot upgrade completeness or replace imported source identity
+ok 220 - new observations cannot upgrade completeness or replace imported source identity
   ---
-  duration_ms: 0.9952
+  duration_ms: 0.831
   type: 'test'
   ...
 # Subtest: OpenCode cached after-hook observations learn late truncation metadata and retain first presentation
-ok 219 - OpenCode cached after-hook observations learn late truncation metadata and retain first presentation
+ok 221 - OpenCode cached after-hook observations learn late truncation metadata and retain first presentation
   ---
-  duration_ms: 429.785
+  duration_ms: 367.8181
   type: 'test'
   ...
 # Subtest: late OpenCode truncation on a recognized cached projection restores the source without recapturing marker bytes
-ok 220 - late OpenCode truncation on a recognized cached projection restores the source without recapturing marker bytes
+ok 222 - late OpenCode truncation on a recognized cached projection restores the source without recapturing marker bytes
   ---
-  duration_ms: 373.0522
+  duration_ms: 457.0105
   type: 'test'
   ...
 # Subtest: restriction observations reject spoofed markers, wrong invocation scope, receipt corruption and completeness upgrades
-ok 221 - restriction observations reject spoofed markers, wrong invocation scope, receipt corruption and completeness upgrades
+ok 223 - restriction observations reject spoofed markers, wrong invocation scope, receipt corruption and completeness upgrades
   ---
-  duration_ms: 430.4751
+  duration_ms: 739.264
   type: 'test'
   ...
 # Subtest: restriction observation cannot republish provenance retired during the verified source read
-ok 222 - restriction observation cannot republish provenance retired during the verified source read
+ok 224 - restriction observation cannot republish provenance retired during the verified source read
   ---
-  duration_ms: 538.6697
+  duration_ms: 430.8449
   type: 'test'
   ...
 # Subtest: openai-compatible: the request deadline survives garbage collection while a body stalls
-ok 223 - openai-compatible: the request deadline survives garbage collection while a body stalls
+ok 225 - openai-compatible: the request deadline survives garbage collection while a body stalls
   ---
-  duration_ms: 756.6002
+  duration_ms: 725.9719
   type: 'test'
   ...
 # Subtest: anthropic: the request deadline survives garbage collection while a body stalls
-ok 224 - anthropic: the request deadline survives garbage collection while a body stalls
+ok 226 - anthropic: the request deadline survives garbage collection while a body stalls
   ---
-  duration_ms: 702.6225
+  duration_ms: 777.5917
   type: 'test'
   ...
 # Subtest: gemini: the request deadline survives garbage collection while a body stalls
-ok 225 - gemini: the request deadline survives garbage collection while a body stalls
+ok 227 - gemini: the request deadline survives garbage collection while a body stalls
   ---
-  duration_ms: 668.5634
+  duration_ms: 749.7991
   type: 'test'
   ...
 # Subtest: systemone: the request deadline survives garbage collection while a body stalls
-ok 226 - systemone: the request deadline survives garbage collection while a body stalls
+ok 228 - systemone: the request deadline survives garbage collection while a body stalls
   ---
-  duration_ms: 625.7605
+  duration_ms: 843.8526
   type: 'test'
   ...
 # Subtest: openai-compatible: reads a normal JSON reply
-ok 227 - openai-compatible: reads a normal JSON reply
+ok 229 - openai-compatible: reads a normal JSON reply
   ---
-  duration_ms: 113.6415
+  duration_ms: 89.3359
   type: 'test'
   ...
 # Subtest: openai-compatible: a credential is never sent over plain http to a non-loopback host
-ok 228 - openai-compatible: a credential is never sent over plain http to a non-loopback host
+ok 230 - openai-compatible: a credential is never sent over plain http to a non-loopback host
   ---
-  duration_ms: 0.9805
+  duration_ms: 0.8384
   type: 'test'
   ...
 # Subtest: openai-compatible: 3xx redirects are refused and neither the prompt nor credentials reach another host
-ok 229 - openai-compatible: 3xx redirects are refused and neither the prompt nor credentials reach another host
+ok 231 - openai-compatible: 3xx redirects are refused and neither the prompt nor credentials reach another host
   ---
-  duration_ms: 35.9949
+  duration_ms: 46.5983
   type: 'test'
   ...
 # Subtest: openai-compatible: oversized replies (declared or streamed) are refused with no body in the error
-ok 230 - openai-compatible: oversized replies (declared or streamed) are refused with no body in the error
+ok 232 - openai-compatible: oversized replies (declared or streamed) are refused with no body in the error
   ---
-  duration_ms: 152.5985
+  duration_ms: 166.6641
   type: 'test'
   ...
 # Subtest: openai-compatible: a reply that sends headers then stalls mid-body times out
-ok 231 - openai-compatible: a reply that sends headers then stalls mid-body times out
+ok 233 - openai-compatible: a reply that sends headers then stalls mid-body times out
   ---
-  duration_ms: 196.5195
+  duration_ms: 200.5132
   type: 'test'
   ...
 # Subtest: openai-compatible: HTTP errors, invalid JSON and refused connections are distinct fixed-text failures
-ok 232 - openai-compatible: HTTP errors, invalid JSON and refused connections are distinct fixed-text failures
+ok 234 - openai-compatible: HTTP errors, invalid JSON and refused connections are distinct fixed-text failures
   ---
-  duration_ms: 15.4571
+  duration_ms: 35.4571
   type: 'test'
   ...
 # Subtest: anthropic: reads a normal JSON reply
-ok 233 - anthropic: reads a normal JSON reply
+ok 235 - anthropic: reads a normal JSON reply
   ---
-  duration_ms: 7.6104
+  duration_ms: 9.3485
   type: 'test'
   ...
 # Subtest: anthropic: a credential is never sent over plain http to a non-loopback host
-ok 234 - anthropic: a credential is never sent over plain http to a non-loopback host
+ok 236 - anthropic: a credential is never sent over plain http to a non-loopback host
   ---
-  duration_ms: 0.3315
+  duration_ms: 0.3065
   type: 'test'
   ...
 # Subtest: anthropic: 3xx redirects are refused and neither the prompt nor credentials reach another host
-ok 235 - anthropic: 3xx redirects are refused and neither the prompt nor credentials reach another host
+ok 237 - anthropic: 3xx redirects are refused and neither the prompt nor credentials reach another host
   ---
-  duration_ms: 12.0217
+  duration_ms: 25.8572
   type: 'test'
   ...
 # Subtest: anthropic: oversized replies (declared or streamed) are refused with no body in the error
-ok 236 - anthropic: oversized replies (declared or streamed) are refused with no body in the error
+ok 238 - anthropic: oversized replies (declared or streamed) are refused with no body in the error
   ---
-  duration_ms: 223.1195
+  duration_ms: 190.6534
   type: 'test'
   ...
 # Subtest: anthropic: a reply that sends headers then stalls mid-body times out
-ok 237 - anthropic: a reply that sends headers then stalls mid-body times out
+ok 239 - anthropic: a reply that sends headers then stalls mid-body times out
   ---
-  duration_ms: 179.2902
+  duration_ms: 189.7628
   type: 'test'
   ...
 # Subtest: anthropic: HTTP errors, invalid JSON and refused connections are distinct fixed-text failures
-ok 238 - anthropic: HTTP errors, invalid JSON and refused connections are distinct fixed-text failures
+ok 240 - anthropic: HTTP errors, invalid JSON and refused connections are distinct fixed-text failures
   ---
-  duration_ms: 18.6933
+  duration_ms: 23.9563
   type: 'test'
   ...
 # Subtest: gemini: reads a normal JSON reply
-ok 239 - gemini: reads a normal JSON reply
+ok 241 - gemini: reads a normal JSON reply
   ---
-  duration_ms: 6.1337
+  duration_ms: 5.8138
   type: 'test'
   ...
 # Subtest: gemini: a credential is never sent over plain http to a non-loopback host
-ok 240 - gemini: a credential is never sent over plain http to a non-loopback host
+ok 242 - gemini: a credential is never sent over plain http to a non-loopback host
   ---
-  duration_ms: 0.2792
+  duration_ms: 0.2327
   type: 'test'
   ...
 # Subtest: gemini: 3xx redirects are refused and neither the prompt nor credentials reach another host
-ok 241 - gemini: 3xx redirects are refused and neither the prompt nor credentials reach another host
+ok 243 - gemini: 3xx redirects are refused and neither the prompt nor credentials reach another host
   ---
-  duration_ms: 25.2072
+  duration_ms: 12.3167
   type: 'test'
   ...
 # Subtest: gemini: oversized replies (declared or streamed) are refused with no body in the error
-ok 242 - gemini: oversized replies (declared or streamed) are refused with no body in the error
+ok 244 - gemini: oversized replies (declared or streamed) are refused with no body in the error
   ---
-  duration_ms: 198.5965
+  duration_ms: 218.845
   type: 'test'
   ...
 # Subtest: gemini: a reply that sends headers then stalls mid-body times out
-ok 243 - gemini: a reply that sends headers then stalls mid-body times out
+ok 245 - gemini: a reply that sends headers then stalls mid-body times out
   ---
-  duration_ms: 168.7598
+  duration_ms: 213.0943
   type: 'test'
   ...
 # Subtest: gemini: HTTP errors, invalid JSON and refused connections are distinct fixed-text failures
-ok 244 - gemini: HTTP errors, invalid JSON and refused connections are distinct fixed-text failures
+ok 246 - gemini: HTTP errors, invalid JSON and refused connections are distinct fixed-text failures
   ---
-  duration_ms: 30.904
+  duration_ms: 9.6334
   type: 'test'
   ...
 # Subtest: failover applies one overall deadline across providers, aborting real I/O and bounding providers that ignore the signal
-ok 245 - failover applies one overall deadline across providers, aborting real I/O and bounding providers that ignore the signal
+ok 247 - failover applies one overall deadline across providers, aborting real I/O and bounding providers that ignore the signal
   ---
-  duration_ms: 208.5734
+  duration_ms: 229.904
   type: 'test'
   ...
 # Subtest: a stalled first provider only spends its share of the deadline, so the second provider still runs
-ok 246 - a stalled first provider only spends its share of the deadline, so the second provider still runs
+ok 248 - a stalled first provider only spends its share of the deadline, so the second provider still runs
   ---
-  duration_ms: 1201.4936
+  duration_ms: 1128.9842
   type: 'test'
   ...
 # Subtest: failover honours a caller cancellation signal and keeps per-purpose default deadlines bounded
-ok 247 - failover honours a caller cancellation signal and keeps per-purpose default deadlines bounded
+ok 249 - failover honours a caller cancellation signal and keeps per-purpose default deadlines bounded
   ---
-  duration_ms: 56.9661
+  duration_ms: 76.6011
   type: 'test'
   ...
 # Subtest: short JSON calls explicitly disable reasoning when configured and retain old request defaults
-ok 248 - short JSON calls explicitly disable reasoning when configured and retain old request defaults
+ok 250 - short JSON calls explicitly disable reasoning when configured and retain old request defaults
   ---
-  duration_ms: 48.0139
+  duration_ms: 43.3968
   type: 'test'
   ...
 # Subtest: reasoning config accepts explicit compatible-provider efforts and rejects invalid values or kinds
-ok 249 - reasoning config accepts explicit compatible-provider efforts and rejects invalid values or kinds
+ok 251 - reasoning config accepts explicit compatible-provider efforts and rejects invalid values or kinds
   ---
-  duration_ms: 2.3538
+  duration_ms: 2.9919
   type: 'test'
   ...
-# (node:58328) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:72116) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: recall restores the EXACT original
     # Subtest: restores byte-identical input/result after eviction
     ok 1 - restores byte-identical input/result after eviction
       ---
-      duration_ms: 452.3578
+      duration_ms: 367.5959
       type: 'test'
       ...
     # Subtest: recall works across sessions (no session scoping on recall)
     ok 2 - recall works across sessions (no session scoping on recall)
       ---
-      duration_ms: 110.2081
+      duration_ms: 91.0891
       type: 'test'
       ...
     # Subtest: recall is isolated by agent: a wrong agent throws
     ok 3 - recall is isolated by agent: a wrong agent throws
       ---
-      duration_ms: 78.6712
+      duration_ms: 75.4418
       type: 'test'
       ...
     1..3
-ok 250 - recall restores the EXACT original
+ok 252 - recall restores the EXACT original
   ---
-  duration_ms: 642.9608
+  duration_ms: 535.7484
   type: 'suite'
   ...
-# (node:28572) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:13924) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: recall session views
     # Subtest: recall into another session preserves source and creates a separate view
     ok 1 - recall into another session preserves source and creates a separate view
       ---
-      duration_ms: 123.9102
+      duration_ms: 129.1919
       type: 'test'
       ...
     # Subtest: recall without a session keeps the legacy behavior
     ok 2 - recall without a session keeps the legacy behavior
       ---
-      duration_ms: 96.6583
+      duration_ms: 111.246
       type: 'test'
       ...
     1..2
-ok 251 - recall session views
+ok 253 - recall session views
   ---
-  duration_ms: 221.8062
+  duration_ms: 241.9454
   type: 'suite'
   ...
-# (node:36580) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:62852) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: input recall cannot restore a large result or alter protection and views
-ok 252 - input recall cannot restore a large result or alter protection and views
+ok 254 - input recall cannot restore a large result or alter protection and views
   ---
-  duration_ms: 648.614
+  duration_ms: 708.3464
   type: 'test'
   ...
 # Subtest: Unicode projection survives cache reads, reopen and pin restoration byte-for-byte
-ok 253 - Unicode projection survives cache reads, reopen and pin restoration byte-for-byte
+ok 255 - Unicode projection survives cache reads, reopen and pin restoration byte-for-byte
   ---
-  duration_ms: 649.9901
+  duration_ms: 580.1488
   type: 'test'
   ...
 # Subtest: verify checks source and visible hashes for every projection representation
     # Subtest: text
     ok 1 - text
       ---
-      duration_ms: 536.8767
+      duration_ms: 379.4143
       type: 'test'
       ...
     # Subtest: stdout
     ok 2 - stdout
       ---
-      duration_ms: 423.4684
+      duration_ms: 352.0289
       type: 'test'
       ...
     # Subtest: mcp-text
     ok 3 - mcp-text
       ---
-      duration_ms: 447.0299
+      duration_ms: 361.2885
       type: 'test'
       ...
     1..3
-ok 254 - verify checks source and visible hashes for every projection representation
+ok 256 - verify checks source and visible hashes for every projection representation
   ---
-  duration_ms: 1408.7727
+  duration_ms: 1094.1503
   type: 'test'
   ...
 # Subtest: verify rejects unsupported receipt identities and unauthorized session views
-ok 255 - verify rejects unsupported receipt identities and unauthorized session views
+ok 257 - verify rejects unsupported receipt identities and unauthorized session views
   ---
-  duration_ms: 494.81
+  duration_ms: 452.9036
   type: 'test'
   ...
 # Subtest: explicit partial provenance is retained when RTK command detection applies
-ok 256 - explicit partial provenance is retained when RTK command detection applies
+ok 258 - explicit partial provenance is retained when RTK command detection applies
   ---
-  duration_ms: 0.3501
+  duration_ms: 0.4059
   type: 'test'
   ...
 # Subtest: reindex does not republish evidence retired while its original read was pending
-ok 257 - reindex does not republish evidence retired while its original read was pending
+ok 259 - reindex does not republish evidence retired while its original read was pending
   ---
-  duration_ms: 340.4442
+  duration_ms: 304.7096
   type: 'test'
   ...
 # Subtest: pin rejects an event retired while its original read was pending without creating an orphan pin
-ok 258 - pin rejects an event retired while its original read was pending without creating an orphan pin
+ok 260 - pin rejects an event retired while its original read was pending without creating an orphan pin
   ---
-  duration_ms: 313.9721
+  duration_ms: 254.1996
   type: 'test'
   ...
 # Subtest: legacy Windows workspace and host session identities remain readable and idempotent
-ok 259 - legacy Windows workspace and host session identities remain readable and idempotent
+ok 261 - legacy Windows workspace and host session identities remain readable and idempotent
   ---
-  duration_ms: 119.4792
+  duration_ms: 117.4009
   type: 'test'
   ...
 # Subtest: legacy missing-project parent spelling is resolved without rewriting its identity
-ok 260 - legacy missing-project parent spelling is resolved without rewriting its identity
+ok 262 - legacy missing-project parent spelling is resolved without rewriting its identity
   ---
-  duration_ms: 92.2589
+  duration_ms: 96.5682
   type: 'test'
   ...
-# (node:64156) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:20956) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: RTK full gzip payload is independently hash-checked, copied, searchable, and source DB stays unchanged
-ok 261 - RTK full gzip payload is independently hash-checked, copied, searchable, and source DB stays unchanged
+ok 263 - RTK full gzip payload is independently hash-checked, copied, searchable, and source DB stays unchanged
   ---
-  duration_ms: 762.0883
+  duration_ms: 720.8397
   type: 'test'
   ...
 # Subtest: RTK truncated hidden tail is partial and never validated against an unavailable full hash
-ok 262 - RTK truncated hidden tail is partial and never validated against an unavailable full hash
+ok 264 - RTK truncated hidden tail is partial and never validated against an unavailable full hash
   ---
-  duration_ms: 534.3675
+  duration_ms: 408.2355
   type: 'test'
   ...
 # Subtest: RTK corrupted full-source hash is refused instead of trusted because the filename looks hashed
-ok 263 - RTK corrupted full-source hash is refused instead of trusted because the filename looks hashed
+ok 265 - RTK corrupted full-source hash is refused instead of trusted because the filename looks hashed
   ---
-  duration_ms: 181.9781
+  duration_ms: 152.3062
   type: 'test'
   ...
 # Subtest: RTK workspace mismatch and missing cwd are refused before data can cross project scopes
-ok 264 - RTK workspace mismatch and missing cwd are refused before data can cross project scopes
+ok 266 - RTK workspace mismatch and missing cwd are refused before data can cross project scopes
   ---
-  duration_ms: 174.4697
+  duration_ms: 191.7424
   type: 'test'
   ...
 # Subtest: RTK reference input cannot inject SQL or execute a shell command
-ok 265 - RTK reference input cannot inject SQL or execute a shell command
+ok 267 - RTK reference input cannot inject SQL or execute a shell command
   ---
-  duration_ms: 136.38
+  duration_ms: 146.4295
   type: 'test'
   ...
 # Subtest: RTK raw codec works and unknown codec or invalid UTF-8 fails clearly
-ok 266 - RTK raw codec works and unknown codec or invalid UTF-8 fails clearly
+ok 268 - RTK raw codec works and unknown codec or invalid UTF-8 fails clearly
   ---
-  duration_ms: 239.1874
+  duration_ms: 230.8236
   type: 'test'
   ...
 # Subtest: RTK malformed gzip, impossible length, and schema views are refused
-ok 267 - RTK malformed gzip, impossible length, and schema views are refused
+ok 269 - RTK malformed gzip, impossible length, and schema views are refused
   ---
-  duration_ms: 166.3149
+  duration_ms: 242.4142
   type: 'test'
   ...
 # Subtest: RTK expired references do not cause source database creation
-ok 268 - RTK expired references do not cause source database creation
+ok 270 - RTK expired references do not cause source database creation
   ---
-  duration_ms: 121.1561
+  duration_ms: 117.1682
   type: 'test'
   ...
 # Subtest: explicit RTK opt-in automatically copies a hint but preserves original event provenance and output
-ok 269 - explicit RTK opt-in automatically copies a hint but preserves original event provenance and output
+ok 271 - explicit RTK opt-in automatically copies a hint but preserves original event provenance and output
   ---
-  duration_ms: 483.3964
+  duration_ms: 399.1672
   type: 'test'
   ...
 # Subtest: unavailable RTK copy fails open after the observed host output is safely archived
-ok 270 - unavailable RTK copy fails open after the observed host output is safely archived
+ok 272 - unavailable RTK copy fails open after the observed host output is safely archived
   ---
-  duration_ms: 249.1215
+  duration_ms: 280.8069
   type: 'test'
   ...
 # Subtest: CLI RTK dry run does not create destination storage; actual import exposes exact recalled data
-ok 271 - CLI RTK dry run does not create destination storage; actual import exposes exact recalled data
+ok 273 - CLI RTK dry run does not create destination storage; actual import exposes exact recalled data
   ---
-  duration_ms: 1197.2428
+  duration_ms: 885.4619
   type: 'test'
   ...
-# (node:44144) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:77700) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: schema migrations
     # Subtest: upgrades a v1-shaped database to v4 with data intact
     ok 1 - upgrades a v1-shaped database to v4 with data intact
       ---
-      duration_ms: 272.0915
+      duration_ms: 335.0025
       type: 'test'
       ...
     1..1
-ok 272 - schema migrations
+ok 274 - schema migrations
   ---
-  duration_ms: 273.3265
+  duration_ms: 336.5962
   type: 'suite'
   ...
 # Subtest: migrates the actual uploaded v0.1 schema-v2 constraints, preserves evidence and scopes recycled IDs
-ok 273 - migrates the actual uploaded v0.1 schema-v2 constraints, preserves evidence and scopes recycled IDs
+ok 275 - migrates the actual uploaded v0.1 schema-v2 constraints, preserves evidence and scopes recycled IDs
   ---
-  duration_ms: 751.2527
+  duration_ms: 944.8449
   type: 'test'
   ...
 # Subtest: upgrades the actual v0.2 schema-v3 layout without inventing provenance or trusting legacy markers
-ok 274 - upgrades the actual v0.2 schema-v3 layout without inventing provenance or trusting legacy markers
+ok 276 - upgrades the actual v0.2 schema-v3 layout without inventing provenance or trusting legacy markers
   ---
-  duration_ms: 1314.7502
+  duration_ms: 1180.1459
   type: 'test'
   ...
-# (node:3560) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:73772) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: scorer failover 鈬?conservative fallback
     # Subtest: failed providers fall back: a small event is kept, never evicted
     ok 1 - failed providers fall back: a small event is kept, never evicted
       ---
-      duration_ms: 192.5009
+      duration_ms: 215.0293
       type: 'test'
       ...
     # Subtest: a working provider score flows through: 0.99 evicts a noisy event
     ok 2 - a working provider score flows through: 0.99 evicts a noisy event
       ---
-      duration_ms: 192.0823
+      duration_ms: 179.9456
       type: 'test'
       ...
     1..2
-ok 275 - scorer failover 鈬?conservative fallback
+ok 277 - scorer failover 鈬?conservative fallback
   ---
-  duration_ms: 385.975
+  duration_ms: 396.4847
   type: 'suite'
   ...
-# (node:18140) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:50628) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: side-effect tools are never silently evicted (鈮?capsule)
     # Subtest: a 0.99-scored Edit is capsuled, never evicted
     ok 1 - a 0.99-scored Edit is capsuled, never evicted
       ---
-      duration_ms: 203.0892
+      duration_ms: 192.8379
       type: 'test'
       ...
     1..1
-ok 276 - side-effect tools are never silently evicted (鈮?capsule)
+ok 278 - side-effect tools are never silently evicted (鈮?capsule)
   ---
-  duration_ms: 204.3444
+  duration_ms: 194.1443
   type: 'suite'
   ...
-# (node:13924) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:12412) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: native scorer sends state/questions directly, preserves probability order and logs actual usage
-ok 277 - native scorer sends state/questions directly, preserves probability order and logs actual usage
+ok 279 - native scorer sends state/questions directly, preserves probability order and logs actual usage
   ---
-  duration_ms: 228.5303
+  duration_ms: 233.4871
   type: 'test'
   ...
 # Subtest: native scorer scores every event across bounded groups instead of dropping the batch tail
-ok 278 - native scorer scores every event across bounded groups instead of dropping the batch tail
+ok 280 - native scorer scores every event across bounded groups instead of dropping the batch tail
   ---
-  duration_ms: 283.7747
+  duration_ms: 262.3753
   type: 'test'
   ...
 # Subtest: missing, mismatched, nonnumeric or out-of-range native probabilities reject the whole group
-ok 279 - missing, mismatched, nonnumeric or out-of-range native probabilities reject the whole group
+ok 281 - missing, mismatched, nonnumeric or out-of-range native probabilities reject the whole group
   ---
-  duration_ms: 198.2464
+  duration_ms: 197.9088
   type: 'test'
   ...
 # Subtest: unavailable native decisions fail open through conservative retention and preserve exact archives
-ok 280 - unavailable native decisions fail open through conservative retention and preserve exact archives
+ok 282 - unavailable native decisions fail open through conservative retention and preserve exact archives
   ---
-  duration_ms: 214.1013
+  duration_ms: 246.9322
   type: 'test'
   ...
 # Subtest: native HTTP transport aborts a server that never answers and refuses unauthenticated remote endpoints
-ok 281 - native HTTP transport aborts a server that never answers and refuses unauthenticated remote endpoints
+ok 283 - native HTTP transport aborts a server that never answers and refuses unauthenticated remote endpoints
   ---
-  duration_ms: 234.4944
+  duration_ms: 234.7659
   type: 'test'
   ...
 # Subtest: native HTTP transport times out when headers arrive but the body stalls, and reports refused connections distinctly
-ok 282 - native HTTP transport times out when headers arrive but the body stalls, and reports refused connections distinctly
+ok 284 - native HTTP transport times out when headers arrive but the body stalls, and reports refused connections distinctly
   ---
-  duration_ms: 282.0769
+  duration_ms: 287.2874
   type: 'test'
   ...
 # Subtest: native HTTP transport refuses redirects without forwarding the prompt or credentials, and oversized responses
-ok 283 - native HTTP transport refuses redirects without forwarding the prompt or credentials, and oversized responses
+ok 285 - native HTTP transport refuses redirects without forwarding the prompt or credentials, and oversized responses
   ---
-  duration_ms: 149.7576
+  duration_ms: 169.8453
   type: 'test'
   ...
 # Subtest: Node 24 env proxy settings cannot capture native decision requests (default agent proxies, native transport does not)
-ok 284 - Node 24 env proxy settings cannot capture native decision requests (default agent proxies, native transport does not) # SKIP this Node build ignores NODE_USE_ENV_PROXY
+ok 286 - Node 24 env proxy settings cannot capture native decision requests (default agent proxies, native transport does not) # SKIP this Node build ignores NODE_USE_ENV_PROXY
   ---
-  duration_ms: 338.6751
+  duration_ms: 254.0421
   type: 'test'
   ...
 # Subtest: one overall deadline aborts in-flight native calls across providers; the whole batch falls back conservatively with archives intact
-ok 285 - one overall deadline aborts in-flight native calls across providers; the whole batch falls back conservatively with archives intact
+ok 287 - one overall deadline aborts in-flight native calls across providers; the whole batch falls back conservatively with archives intact
   ---
-  duration_ms: 1350.0997
+  duration_ms: 1377.2385
   type: 'test'
   ...
 # Subtest: a pin landing while the provider call is in flight keeps the event; unpinned peers are still evicted
-ok 286 - a pin landing while the provider call is in flight keeps the event; unpinned peers are still evicted
+ok 288 - a pin landing while the provider call is in flight keeps the event; unpinned peers are still evicted
   ---
-  duration_ms: 135.9955
+  duration_ms: 129.7576
   type: 'test'
   ...
 # Subtest: oversized native inputs fail before a call and remain eligible for conservative fallback
-ok 287 - oversized native inputs fail before a call and remain eligible for conservative fallback
+ok 289 - oversized native inputs fail before a call and remain eligible for conservative fallback
   ---
-  duration_ms: 65.0035
+  duration_ms: 70.3424
   type: 'test'
   ...
 # Subtest: configuration rejects native decision providers in prose-generation roles or with a mismatched scorer
-ok 288 - configuration rejects native decision providers in prose-generation roles or with a mismatched scorer
+ok 290 - configuration rejects native decision providers in prose-generation roles or with a mismatched scorer
   ---
-  duration_ms: 1.7141
+  duration_ms: 1.0704
   type: 'test'
   ...
-# (node:51000) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:62920) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: tidy loops to release in bounded batches
     # Subtest: scores 16 hot events in 2 passes with one model call per pass
     ok 1 - scores 16 hot events in 2 passes with one model call per pass
       ---
-      duration_ms: 949.8982
+      duration_ms: 1013.6945
       type: 'test'
       ...
     # Subtest: stops looping when pressure is already below the trigger
     ok 2 - stops looping when pressure is already below the trigger
       ---
-      duration_ms: 105.6583
+      duration_ms: 120.543
       type: 'test'
       ...
     # Subtest: a pass that changes nothing stops the loop early
     ok 3 - a pass that changes nothing stops the loop early
       ---
-      duration_ms: 419.8753
+      duration_ms: 541.4042
       type: 'test'
       ...
     1..3
-ok 289 - tidy loops to release in bounded batches
+ok 291 - tidy loops to release in bounded batches
   ---
-  duration_ms: 1477.5248
+  duration_ms: 1677.3702
   type: 'suite'
   ...
-# (node:47888) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:16204) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: Windows drive and UNC identities are lexical, idempotent and preserve component case
-ok 290 - Windows drive and UNC identities are lexical, idempotent and preserve component case
+ok 292 - Windows drive and UNC identities are lexical, idempotent and preserve component case
   ---
-  duration_ms: 2.6416
+  duration_ms: 3.823
   type: 'test'
   ...
 # Subtest: relative, absolute and existing workspace spellings share a stable identity
-ok 291 - relative, absolute and existing workspace spellings share a stable identity
+ok 293 - relative, absolute and existing workspace spellings share a stable identity
   ---
-  duration_ms: 20.7545
+  duration_ms: 22.4958
   type: 'test'
   ...
 # Subtest: capture lookup search recall and pin work before and after workspace creation
-ok 292 - capture lookup search recall and pin work before and after workspace creation
+ok 294 - capture lookup search recall and pin work before and after workspace creation
   ---
-  duration_ms: 261.43
+  duration_ms: 317.2638
   type: 'test'
   ...
 # Subtest: UNC legacy scope resolution folds only volume names and observes new conflicts without network access
-ok 293 - UNC legacy scope resolution folds only volume names and observes new conflicts without network access
+ok 295 - UNC legacy scope resolution folds only volume names and observes new conflicts without network access
   ---
-  duration_ms: 102.5762
+  duration_ms: 113.0472
   type: 'test'
   ...
 # Subtest: lexical drive candidates stay separate across volumes and avoid redundant canonical path probes
-ok 294 - lexical drive candidates stay separate across volumes and avoid redundant canonical path probes
+ok 296 - lexical drive candidates stay separate across volumes and avoid redundant canonical path probes
   ---
-  duration_ms: 110.5495
+  duration_ms: 120.4896
   type: 'test'
   ...
 # Subtest: cross-volume legacy junction aliases still resolve and all conflicting aliases are checked
-ok 295 - cross-volume legacy junction aliases still resolve and all conflicting aliases are checked
+ok 297 - cross-volume legacy junction aliases still resolve and all conflicting aliases are checked
   ---
-  duration_ms: 103.892
+  duration_ms: 97.6503
   type: 'test'
   ...
-# (node:63184) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (node:71332) ExperimentalWarning: SQLite is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: workspace id normalization
     # Subtest: unit: opaque, relative, and home forms normalize correctly
     ok 1 - unit: opaque, relative, and home forms normalize correctly
       ---
-      duration_ms: 3.9436
+      duration_ms: 4.5137
       type: 'test'
       ...
     # Subtest: end to end
         # Subtest: relative and absolute workspace ids share one workspace row
         ok 1 - relative and absolute workspace ids share one workspace row
           ---
-          duration_ms: 178.7189
+          duration_ms: 187.1504
           type: 'test'
           ...
         # Subtest: duplicate detection survives path-form differences
         ok 2 - duplicate detection survives path-form differences
           ---
-          duration_ms: 128.3375
+          duration_ms: 130.4106
           type: 'test'
           ...
         1..2
     ok 2 - end to end
       ---
-      duration_ms: 307.4686
+      duration_ms: 317.978
       type: 'suite'
       ...
     1..2
-ok 296 - workspace id normalization
+ok 298 - workspace id normalization
   ---
-  duration_ms: 312.825
+  duration_ms: 324.8904
   type: 'suite'
   ...
-1..296
-# tests 321
+1..298
+# tests 323
 # suites 18
-# pass 319
+# pass 321
 # fail 0
 # cancelled 0
 # skipped 2
 # todo 0
-# duration_ms 15538.7988
+# duration_ms 15190.0984

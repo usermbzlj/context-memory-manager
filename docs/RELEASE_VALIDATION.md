@@ -13,8 +13,8 @@ against disposable synthetic log files.
 
 | Executed check | Actual result |
 | --- | --- |
-| Clean source suite | `npm test`: **321 tests, 18 suites; 320 pass, 0 fail, 1 Windows file-symlink skip** |
-| Same build on Node 22.16.0 | 321 tests, 319 pass, 0 fail, 2 skips (Windows file symlink; ignored `NODE_USE_ENV_PROXY`) |
+| Clean source suite | `npm test`: **323 tests, 18 suites; 322 pass, 0 fail, 1 Windows file-symlink skip** (rerun after the dashboard compression/model views) |
+| Same build on Node 22.16.0 | 323 tests, 321 pass, 0 fail, 2 skips (Windows file symlink; ignored `NODE_USE_ENV_PROXY`) |
 | Offline distributable | `npm run test:pack` passes. It first failed with `EALLOWSCRIPTS` because the OpenCode npm install had added a user-level `allow-scripts`. `npm run` exports it as `npm_config_allow_scripts`, and npm 11.17 rejects that in the nested project-scoped install (a direct `npm install` is unaffected). The script-free package install now clears that variable for itself |
 | Windows smoke | `scripts/windows-smoke.ps1` passes under PowerShell 5.1 and 7 |
 | Host loading | `opencode plugin list` shows `context-memory-manager` (local). The real Bun host loaded it in standalone runs and in the background service |

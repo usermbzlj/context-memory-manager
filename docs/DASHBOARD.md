@@ -29,9 +29,19 @@ dashboard` and exits with code 1.
 - Realtime: actual capture/archive/index/scoring/provider operations, fresh/stale instance state,
   provenance-labelled timestamps, scope totals and local model health. Remote models show saved
   configuration, not an inferred live connection. Host context token occupancy is unknown.
-- Evidence: scoped literal search, filters and signed pagination, provenance/hash distinctions,
-  safe text rendering, bounded original paging, exact hash-verified download, pin and unpin.
-- Sessions/chains: scoped source relations, member evidence and separately loaded capsules.
+  A model status card shows, per role (retention, capsule, chain), the configured models, local
+  health, whether any call was recorded and the last call's outcome (storage-global ledger), plus
+  which scorer produced the selected scope's retention scores. A storage without a usable
+  retention model is flagged: every score then comes from the built-in conservative rules.
+- Compression records: every recorded projection in the scope (session, tool, original and
+  visible character counts, reduction). Opening one shows the archived original (paged) next to
+  the exact view the host request carried; that receipt is re-verified against the archive hash
+  before it is labelled as checked. Counts are UTF-16 characters, not tokens or billing.
+- Evidence: scoped literal search, filters (including compressed / not compressed) and signed
+  pagination, provenance/hash distinctions, safe text rendering, bounded original paging, exact
+  hash-verified download, pin and unpin. The event detail has a before/after comparison tab.
+- Sessions/chains: scoped source relations, member evidence and separately loaded capsules. Each
+  evidence session shows whether and how much it was compressed.
 - Models/calls: global provider configuration and ledger, literal credential keep/replace/delete,
   editable environment references, role ordering and explicitly triggered synthetic model tests.
 - Strategies/integrations: global stored configuration, known capability boundaries and revision
