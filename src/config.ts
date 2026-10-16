@@ -46,8 +46,29 @@ function configObject(value: unknown, label: string, required: readonly string[]
   for (const key of required) if (!Object.hasOwn(fields, key)) throw new Error(`missing config key: ${label}.${key}`);
   return fields;
 }
+/**
+ * True for a loopback host in every form `new URL()` can produce:
+ * `localhost`, `[::1]`, dotted-quad `127.x.x.x`, or an IPv6-mapped
+ * 127.0.0.0/8 address. `new URL()` normalizes every mapped spelling
+ * (`::ffff:127.0.0.1`, `::ffff:7f00:0001`) to `[::ffff:7f00:1]`, so the
+ * check must accept hex-word mapped forms or a dual-stack local provider
+ * is misclassified as remote cleartext.
+ */
 export function isLoopbackHost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '[::1]' || /^127(\.\d{1,3}){3}$/.test(hostname);
+  if (hostname === 'localhost' || hostname === '[::1]') return true;
+  if (/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
+  const lower = hostname.toLowerCase();
+  if (!lower.startsWith('[::ffff:') || !lower.endsWith(']')) return false;
+  const inner = lower.slice(8, -1);
+  if (inner.includes('.')) {
+    const octets = inner.split('.');
+    return octets.length === 4 && octets[0] === '127' && octets.slice(1).every(part => /^\d{1,3}$/.test(part));
+  }
+  const words = inner.split(':');
+  if (words.length === 0 || words.length > 2) return false;
+  if (!words.every(word => /^[0-9a-f]{1,4}$/.test(word))) return false;
+  // Network order: the first hex word holds the high 16 bits of the IPv4 address.
+  return parseInt(words[0].padStart(4, '0').slice(0, 2), 16) === 127;
 }
 /** True when a credential would travel over plain http to a non-loopback host. */
 export function cleartextRemote(baseUrl: string): boolean {

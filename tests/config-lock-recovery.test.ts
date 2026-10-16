@@ -76,8 +76,17 @@ test('new settings require https for credentials unless the host is loopback; ke
     assert.doesNotThrow(()=>validateConfig(cfg(bad)),'loading an older file stays possible');
   }
   for(const ok of [{apiKey:'k',baseUrl:'http://localhost:1234/v1'},{apiKey:'k',baseUrl:'http://127.0.0.1:1/v1'},{apiKey:'k',baseUrl:'http://127.9.9.9/v1'},
-    {apiKey:'k',baseUrl:'http://[::1]:8080/v1'},{apiKeyEnv:'SOME_KEY',baseUrl:'https://api.example.test/v1'},{baseUrl:'http://10.0.0.5/v1'}])
+    {apiKey:'k',baseUrl:'http://[::1]:8080/v1'},{apiKey:'k',baseUrl:'http://[::ffff:7f00:1]:8080/v1'},{apiKey:'k',baseUrl:'http://[::ffff:127.0.0.1]:8080/v1'},{apiKey:'k',baseUrl:'http://[::ffff:7fff:ffff]:8080/v1'},
+    {apiKeyEnv:'SOME_KEY',baseUrl:'https://api.example.test/v1'},{baseUrl:'http://10.0.0.5/v1'}])
     assert.doesNotThrow(()=>validateConfig(cfg(ok),null),JSON.stringify(ok));
+});
+
+test('IPv6-mapped non-loopback addresses stay remote: ::ffff:8.8.8.8 and ::ffff:0.0.0.1 are refused with a credential',()=>{
+  const cfg=(provider:Record<string,unknown>)=>{const c=defaultConfig(os.tmpdir());c.providers.retention=[{kind:'openai-compatible',name:'p',model:'m',...provider} as any];return c;};
+  for(const bad of [{apiKey:'k',baseUrl:'http://[::ffff:808:808]/v1'},{apiKey:'k',baseUrl:'http://[::ffff:0:1]/v1'}]) {
+    assert.throws(()=>validateConfig(cfg(bad),null),/requires an https baseUrl/,JSON.stringify(bad));
+    assert.doesNotThrow(()=>validateConfig(cfg(bad)),'loading an older file stays possible');
+  }
 });
 
 test('an existing cleartext credential configuration still loads, so hooks keep capturing',t=>{
