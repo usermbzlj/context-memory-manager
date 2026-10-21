@@ -80,6 +80,14 @@ test('new settings require https for credentials unless the host is loopback; ke
     assert.doesNotThrow(()=>validateConfig(cfg(ok),null),JSON.stringify(ok));
 });
 
+test('isLoopbackHost rejects out-of-range octets and accepts mapped 127/8', async () => {
+  const {isLoopbackHost} = await import('../src/config.js');
+  for (const ok of ['127.0.0.1','127.255.255.255','[::ffff:7f00:1]','[::ffff:7fff:ffff]'])
+    assert.equal(isLoopbackHost(ok), true, ok);
+  for (const bad of ['127.999.0.1','127.0.256.1','[::ffff:127.999.0.1]','[::ffff:808:808]','128.0.0.1'])
+    assert.equal(isLoopbackHost(bad), false, bad);
+});
+
 test('an existing cleartext credential configuration still loads, so hooks keep capturing',t=>{
   const {dir,file}=fixture(t);
   const c=defaultConfig(dir);c.providers.capsule=[{kind:'openai-compatible',name:'lan',model:'m',apiKey:'k',baseUrl:'http://10.0.0.5/v1'}];
